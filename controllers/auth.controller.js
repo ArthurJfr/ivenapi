@@ -33,13 +33,19 @@ const authController = {
         lname: lname
       });
 
+      // Génération du code de confirmation à 4 chiffres
+      const confirmationCode = Math.floor(1000 + Math.random() * 9000).toString();
+      
+      // Sauvegarde du code en base
+      await User.setConfirmationCode(email, confirmationCode);
+
       // Tentative d'envoi de l'email
       try {
-        await emailService.sendConfirmationEmail(email, username);
+        await emailService.sendConfirmationEmail(email, username, confirmationCode);
         logger.info('Email de confirmation envoyé', { email });
         
         res.status(201).json({
-          message: 'Inscription réussie ! Veuillez vérifier votre email pour activer votre compte.',
+          message: 'Inscription réussie ! Un code de confirmation à 4 chiffres a été envoyé à votre email.',
           userId
         });
       } catch (emailError) {
@@ -144,52 +150,48 @@ const authController = {
 
   async confirmEmail(req, res) {
     try {
-      // Le token est dans le body de la requête, pas dans les query params
-      const { token } = req.body;
+      const { email, code } = req.body;
       
-      if (!token) {
-        return res.status(200).json({ 
-          message: 'Token manquant',
-          error: 'Le token est requis'
-        });
-      }
-
-      // Vérifier le token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      
-      if (!decoded.email) {
+      if (!email || !code) {
         return res.status(400).json({ 
-          message: 'Token invalide',
-          error: 'Le token ne contient pas d\'email'
+          message: 'Email et code sont requis',
+          error: 'Veuillez fournir votre email et le code de confirmation'
         });
       }
 
-      logger.info('Confirmation email - token décodé:', { email: decoded.email });
+      // Vérifier que le code fait bien 4 chiffres
+      if (!/^\d{4}$/.test(code)) {
+        return res.status(400).json({ 
+          message: 'Code invalide',
+          error: 'Le code doit contenir exactement 4 chiffres'
+        });
+      }
 
-      // Activer le compte
-      await User.activateAccount(decoded.email);
+      logger.info('Tentative de confirmation avec code:', { email, code });
+
+      // Vérifier le code
+      const isValidCode = await User.verifyConfirmationCode(email, code);
+      
+      if (!isValidCode) {
+        return res.status(400).json({ 
+          message: 'Code invalide ou expiré',
+          error: 'Le code de confirmation est incorrect ou a expiré. Veuillez demander un nouveau code.'
+        });
+      }
+
+      // Activer le compte et supprimer le code
+      await User.activateAccount(email);
+      await User.clearConfirmationCode(email);
+
+      logger.info('Compte activé avec succès:', { email });
 
       res.json({ 
         message: 'Compte activé avec succès',
-        email: decoded.email 
+        email: email 
       });
 
     } catch (error) {
       logger.error('Erreur confirmation email:', error);
-      
-      if (error.name === 'JsonWebTokenError') {
-        return res.status(400).json({ 
-          message: 'Token invalide',
-          error: error.message 
-        });
-      }
-      
-      if (error.name === 'TokenExpiredError') {
-        return res.status(400).json({ 
-          message: 'Token expiré',
-          error: 'Le lien de confirmation a expiré. Veuillez demander un nouveau lien.'
-        });
-      }
 
       res.status(500).json({ 
         message: 'Erreur lors de la confirmation du compte',
@@ -207,13 +209,23 @@ const authController = {
         return res.status(404).json({ message: 'Aucun utilisateur trouvé avec cet email' });
       }
 
-      await emailService.sendConfirmationEmail(email, user.username);  
+      if (user.active === 1) {
+        return res.status(400).json({ message: 'Ce compte est déjà activé' });
+      }
 
-      res.json({ message: 'Email de confirmation envoyé' });
+      // Génération d'un nouveau code de confirmation à 4 chiffres
+      const confirmationCode = Math.floor(1000 + Math.random() * 9000).toString();
+      
+      // Sauvegarde du nouveau code en base
+      await User.setConfirmationCode(email, confirmationCode);
+
+      await emailService.sendConfirmationEmail(email, user.username, confirmationCode);  
+
+      res.json({ message: 'Nouveau code de confirmation envoyé par email' });
 
     } catch (error) {
       logger.error('Erreur envoi email:', error);
-      res.status(500).json({ message: 'Erreur lors de l\'envoi de l\'email de confirmation' });
+      res.status(500).json({ message: 'Erreur lors de l\'envoi du code de confirmation' });
     }
   }
 };

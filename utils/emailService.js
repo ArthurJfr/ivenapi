@@ -35,11 +35,11 @@ class EmailService {
     }
   }
 
-  async sendConfirmationEmail(email, username) {
+  async sendConfirmationEmail(email, username, confirmationCode) {
     try {
       // Vérifier les paramètres requis
-      if (!email || !username) {
-        throw new Error('Email et username sont requis');
+      if (!email || !username || !confirmationCode) {
+        throw new Error('Email, username et code de confirmation sont requis');
       }
 
       // Vérifier la configuration SMTP
@@ -47,28 +47,28 @@ class EmailService {
         throw new Error('Configuration SMTP manquante');
       }
 
-      const confirmationToken = jwt.sign(
-        { email },
-        process.env.JWT_SECRET,
-        { expiresIn: '24h' }
-      );
-
-      const confirmationLink = `${process.env.FRONTEND_URL}/auth/confirm-email?token=${confirmationToken}`;
-
       const mailOptions = {
         from: {
           name: 'Iven',
           address: process.env.SMTP_FROM
         },
         to: email,
-        subject: 'Confirmation de votre compte',
+        subject: 'Code de confirmation de votre compte',
         html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2>Bonjour ${username},</h2>
-            <p>Merci de confirmer votre compte en cliquant sur le lien ci-dessous :</p>
-            <p><a href="${confirmationLink}">Confirmer mon compte</a></p>
-            <p>Ce lien est valable pendant 24 heures.</p>
-            <p>Si vous n'avez pas créé de compte, vous pouvez ignorer cet email.</p>
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+            <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+              <h2 style="color: #333; text-align: center; margin-bottom: 30px;">Bonjour ${username},</h2>
+              <p style="color: #666; font-size: 16px; line-height: 1.5;">Merci de vous être inscrit ! Pour confirmer votre compte, veuillez saisir le code de confirmation suivant dans votre application :</p>
+              
+              <div style="text-align: center; margin: 30px 0;">
+                <div style="display: inline-block; background-color: #007bff; color: white; padding: 20px 30px; border-radius: 8px; font-size: 32px; font-weight: bold; letter-spacing: 8px;">
+                  ${confirmationCode}
+                </div>
+              </div>
+              
+              <p style="color: #666; font-size: 14px; text-align: center;">Ce code est valable pendant 1 heure.</p>
+              <p style="color: #999; font-size: 12px; text-align: center; margin-top: 30px;">Si vous n'avez pas créé de compte, vous pouvez ignorer cet email.</p>
+            </div>
           </div>
         `
       };

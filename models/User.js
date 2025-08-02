@@ -146,6 +146,40 @@ class User {
       throw new Error('Erreur lors de l\'activation du compte');
     }
   }
+
+  static async setConfirmationCode(email, confirmationCode) {
+    try {
+      await db.query(
+        'UPDATE users SET confirmation_code = ?, confirmation_code_expires = DATE_ADD(NOW(), INTERVAL 1 HOUR) WHERE email = ?',
+        [confirmationCode, email]
+      );
+    } catch (error) {
+      throw new Error('Erreur lors de la mise à jour du code de confirmation');
+    }
+  }
+
+  static async verifyConfirmationCode(email, code) {
+    try {
+      const [rows] = await db.query(
+        'SELECT confirmation_code, confirmation_code_expires FROM users WHERE email = ? AND confirmation_code = ? AND confirmation_code_expires > NOW()',
+        [email, code]
+      );
+      return rows.length > 0;
+    } catch (error) {
+      throw new Error('Erreur lors de la vérification du code de confirmation');
+    }
+  }
+
+  static async clearConfirmationCode(email) {
+    try {
+      await db.query(
+        'UPDATE users SET confirmation_code = NULL, confirmation_code_expires = NULL WHERE email = ?',
+        [email]
+      );
+    } catch (error) {
+      throw new Error('Erreur lors de la suppression du code de confirmation');
+    }
+  }
   //#endregion
 }
 
