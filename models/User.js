@@ -1,0 +1,152 @@
+const db = require('../config/db');
+class User {
+  //#region INSERT
+  static async create(userData) {
+    const { username, email, password, active, fname, lname } = userData;
+    try {
+      const [result] = await db.query(
+        'INSERT INTO users (username, email, password, active, fname, lname ) VALUES (?, ?, ?, ?, ?, ?)',
+        [username, email, password, active, fname, lname]
+      );
+      return result.insertId;
+    } catch (error) {
+      throw new Error('Erreur lors de la création de l\'utilisateur');
+    }
+  }
+  //#endregion
+  //#region SELECT
+  static async findByEmail(email) {
+    try {
+      const [rows] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+      return rows[0];
+    } catch (error) {
+      throw new Error('Erreur lors de la recherche de l\'utilisateur');
+    }
+  }  
+  static async findById(id) {
+    try {
+      const [rows] = await db.query('SELECT id, username, email FROM users WHERE id = ?', [id]);
+      return rows[0];
+    } catch (error) {
+      throw new Error('Erreur lors de la recherche de l\'utilisateur');
+    }
+  }
+  static async findByUsernameOrEmail(identifiant) {
+    try {
+      const [rows] = await db.query(
+        'SELECT * FROM users WHERE username = ? OR email = ?',
+        [identifiant, identifiant]
+      );
+      return rows[0];
+
+    } catch (error) {
+      throw new Error('Erreur lors de la recherche de l\'utilisateur');
+    }
+  }
+  static async getProfilePicture(username) {
+    try {
+      const [rows] = await db.query('SELECT profile_picture FROM users WHERE username = ?', [username]);
+      return rows[0]?.profile_picture || null;
+    } catch (error) {
+      return null;
+    }
+  } 
+  static async getUserByUsername(username) {
+    try {
+      const [rows] = await db.query('SELECT id, username, email, role, active, profile_picture FROM users WHERE username = ?', [username]);
+      return rows[0];
+    } catch (error) {
+      throw new Error('Erreur lors de la récupération de l\'utilisateur');
+    }
+  } 
+  static async getAllUsers() {
+    try {
+      const [rows] = await db.query('SELECT id, username, email, role, active, fname, lname FROM users');
+      return rows;
+    } catch (error) {
+      throw new Error('Erreur lors de la récupération des utilisateurs');
+    }
+  }
+  static async getUserById(id) {
+    try {
+      const [rows] = await db.query(
+        'SELECT id, username, email, role, active, fname, lname FROM users WHERE id = ?', 
+        [id]
+      );
+      return rows[0];
+    } catch (error) {
+      throw new Error('Erreur lors de la récupération de l\'utilisateur');
+    }
+  }
+  static async getUsersByRole(role) {
+    try {
+      const [rows] = await db.query(
+        'SELECT id, username, email, role, active, fname, lname FROM users WHERE role = ?',
+        [role]
+      );
+      return rows;
+    } catch (error) {
+      throw new Error('Erreur lors de la récupération des utilisateurs par rôle');
+    }
+  }
+  static async getUsersByStatus(active) {
+    try {
+      const [rows] = await db.query(
+        'SELECT id, username, email, role, active, fname, lname FROM users WHERE active = ?',
+        [active]
+      );
+      return rows;
+    } catch (error) {
+      throw new Error('Erreur lors de la récupération des utilisateurs par statut');
+    }
+  }
+  static async searchUsers(searchTerm) {
+    try {
+      const [rows] = await db.query(
+          `SELECT id, username, email, role, fname, lname 
+         FROM users 
+         WHERE username LIKE ? OR email LIKE ? OR fname LIKE ? OR lname LIKE ?`,
+        [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`]
+      );
+      return rows;  
+    } catch (error) {
+      throw new Error('Erreur lors de la recherche des utilisateurs');
+    }
+  }
+    //#endregion
+  //#region UPDATE
+  static async updateResetToken(userId, resetToken) {
+    try {
+      await db.query(
+        'UPDATE users SET reset_token = ?, reset_token_expires = DATE_ADD(NOW(), INTERVAL 1 HOUR) WHERE id = ?',
+        [resetToken, userId]
+      );
+    } catch (error) {
+      throw new Error('Erreur lors de la mise à jour du token de réinitialisation');
+    }
+  }
+  static async updateProfilePicture(username, picturePath) {
+    try {
+      await db.query(
+        'UPDATE users SET profile_picture = ? WHERE username = ?',
+        [picturePath, username]
+      );
+      return true;
+    } catch (error) {
+      throw new Error('Erreur lors de la mise à jour de la photo de profil');
+    }
+  }
+  static async activateAccount(email) {
+    try {
+      await db.query(
+        'UPDATE users SET active = 1 WHERE email = ?',
+        [email]
+      );
+    } catch (error) {
+      throw new Error('Erreur lors de l\'activation du compte');
+    }
+  }
+  //#endregion
+}
+
+module.exports = User; 

@@ -1,0 +1,10 @@
+/node_modules
+/server.log
+/server2.log
+/requests.log
+
+/package-lock.json
+*.pdf
+
+/logs
+
