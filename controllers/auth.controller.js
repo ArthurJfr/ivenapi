@@ -5,6 +5,7 @@ const fileManager = require('../utils/fileManager');
 const { sendConfirmationEmail, sendResetPasswordEmail } = require('../utils/emailService');
 const logger = require('../config/logger');
 const emailService = require('../utils/emailService');
+const { cpSync } = require('fs');
 
 const authController = {
   async register(req, res) {
@@ -33,8 +34,8 @@ const authController = {
         lname: lname
       });
 
-      // Génération du code de confirmation à 4 chiffres
-      const confirmationCode = Math.floor(1000 + Math.random() * 9000).toString();
+      // Génération du code de confirmation à 6 chiffres
+      const confirmationCode = Math.floor(100000 + Math.random() * 900000).toString();
       
       // Sauvegarde du code en base
       await User.setConfirmationCode(email, confirmationCode);
@@ -45,7 +46,7 @@ const authController = {
         logger.info('Email de confirmation envoyé', { email });
         
         res.status(201).json({
-          message: 'Inscription réussie ! Un code de confirmation à 4 chiffres a été envoyé à votre email.',
+          message: 'Inscription réussie ! Un code de confirmation à 6 chiffres a été envoyé à votre email.',
           userId
         });
       } catch (emailError) {
@@ -88,7 +89,6 @@ const authController = {
             fname: user.fname,
             lname: user.lname,
             email: user.email,
-            roles: user.roles,
             active: user.active
           }
         });
@@ -108,7 +108,9 @@ const authController = {
           id: user.id,
           username: user.username,
           email: user.email,
-          active: user.active
+          active: user.active,
+          fname: user.fname,
+          lname: user.lname
         }
       });
 
@@ -160,10 +162,10 @@ const authController = {
       }
 
       // Vérifier que le code fait bien 4 chiffres
-      if (!/^\d{4}$/.test(code)) {
+      if (!/^\d{6}$/.test(code)) {
         return res.status(400).json({ 
           message: 'Code invalide',
-          error: 'Le code doit contenir exactement 4 chiffres'
+          error: 'Le code doit contenir exactement 6 chiffres'
         });
       }
 
@@ -184,10 +186,28 @@ const authController = {
       await User.clearConfirmationCode(email);
 
       logger.info('Compte activé avec succès:', { email });
+      //Login automatique
+      const user = await User.findByEmail(email);
+      if (!user) {
+        return res.status(404).json({ message: 'Aucun utilisateur trouvé avec cet email' });
+      }
+
+      const token = jwt.sign(
+        { userId: user.id },
+        process.env.JWT_SECRET,
+        { expiresIn: '72h' }
+      );
 
       res.json({ 
         message: 'Compte activé avec succès',
-        email: email 
+        email: email,
+        token: token,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          active: user.active
+        }
       });
 
     } catch (error) {

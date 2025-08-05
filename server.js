@@ -7,6 +7,7 @@ const mongoose = require("mongoose");
 const db = require('./config/db'); // Import de la connexion MySQL
 const authRoutes = require('./routes/auth.route');
 const adminRoutes = require('./routes/admin.route');
+const healthRoutes = require('./routes/health.route');
 const logger = require('./config/logger');
 const loggerMiddleware = require('./middleware/logger.middleware');
 const { initializeUploadDirectories } = require('./config/init');
@@ -24,7 +25,7 @@ const testMySQLConnection = async () => {
 
 // Middlewares CORS
 app.use(cors({
-  origin: 'http://localhost:3001',
+  origin: '*',
  // methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
  // allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
@@ -44,6 +45,7 @@ mongoose.connection.on("connected", () => {
 });
 
 // Routes
+app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 //app.use('/api/articles', articleRoutes);
