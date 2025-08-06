@@ -64,7 +64,7 @@
 - **Client mobile :** React Native + Expo Router  
 - **Backend API :** Express.js + TypeScript (Monolithique)
 - **Bases de données :** 
-  - **MySQL 8.0** : Données relationnelles (utilisateurs, événements, tâches, budget)
+  - **MySQL 8.0** : Données relationnelles (utilisateurs existants, événements, tâches, budget)
   - **MongoDB 6.0** : Chat temps réel, notifications, logs
   - **Redis 7.0** : Cache, sessions, rate limiting
 - **Stockage Objet :** AWS S3 (médias)  
@@ -168,217 +168,259 @@ backend/
 #### 5.3.1 MySQL - Données Relationnelles
 
 ```sql
--- Utilisateurs
+-- Utilisateurs (Table EXISTANTE - Structure actuelle confirmée)
+-- ATTENTION : Cette table existe déjà avec cette structure exacte
 CREATE TABLE users (
-    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    first_name VARCHAR(100) NOT NULL,
-    last_name VARCHAR(100) NOT NULL,
-    phone VARCHAR(20),
-    avatar_url VARCHAR(500),
-    bio TEXT,
-    language ENUM('fr', 'en') DEFAULT 'fr',
-    theme ENUM('light', 'dark') DEFAULT 'light',
-    email_notifications BOOLEAN DEFAULT true,
-    push_notifications BOOLEAN DEFAULT true,
-    email_verified BOOLEAN DEFAULT false,
-    is_active BOOLEAN DEFAULT true,
-    last_login_at TIMESTAMP NULL,
+    id INT(11) AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL,           -- Nom d'utilisateur unique
+    email VARCHAR(100) NOT NULL,             -- Adresse email
+    password VARCHAR(255) NOT NULL,          -- Mot de passe hashé
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    fname VARCHAR(50) NOT NULL,              -- Prénom
+    lname VARCHAR(50) NOT NULL,              -- Nom de famille  
+    active TINYINT(1) NOT NULL,              -- Compte activé (0/1)
+    reset_token VARCHAR(255),                -- Token réinitialisation mdp
+    reset_token_expires DATETIME,            -- Expiration token reset
+    confirmation_code VARCHAR(6),            -- Code confirmation email
+    confirmation_code_expires DATETIME,      -- Expiration code confirmation
+    
+    -- Index existants (probablement)
+    INDEX idx_username (username),
     INDEX idx_email (email),
-    INDEX idx_active (is_active)
-);
+    INDEX idx_active (active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Événements
+-- Modifications OPTIONNELLES recommandées (à exécuter séparément)
+/*
+ALTER TABLE users 
+ADD COLUMN avatar_url VARCHAR(500) NULL AFTER lname,
+ADD COLUMN bio TEXT NULL AFTER avatar_url,
+ADD COLUMN phone VARCHAR(20) NULL AFTER bio,
+ADD COLUMN timezone VARCHAR(50) DEFAULT 'Europe/Paris' AFTER phone,
+ADD COLUMN notification_preferences JSON DEFAULT '{"email": true, "push": true, "sms": false}' AFTER timezone;
+*/
+
+-- Événements (Nouvelle table - IDs INT pour compatibilité)
 CREATE TABLE events (
-    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    title VARCHAR(200) NOT NULL,
+    id INT(11) AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
     description TEXT,
-    date DATE NOT NULL,
-    time TIME NOT NULL,
-    end_date DATE,
-    end_time TIME,
-    location VARCHAR(300) NOT NULL,
+    location VARCHAR(255),
     latitude DECIMAL(10, 8),
     longitude DECIMAL(11, 8),
-    type ENUM('physique', 'virtuel') NOT NULL,
-    category VARCHAR(50) NOT NULL,
+    start_date DATETIME NOT NULL,           -- Date et heure de début
+    end_date DATETIME,                      -- Date et heure de fin
+    start_time TIME,                        -- Heure de début (séparée)
+    end_time TIME,                         -- Heure de fin (séparée)
+    max_participants INT(11),
     status ENUM('upcoming', 'ongoing', 'completed', 'cancelled') DEFAULT 'upcoming',
-    visibility ENUM('public', 'private') DEFAULT 'private',
-    max_participants INT,
-    allow_invites BOOLEAN DEFAULT true,
-    organizer_id VARCHAR(36) NOT NULL,
+    category VARCHAR(50),
+    type ENUM('perso', 'pro') DEFAULT 'perso',
+    is_public BOOLEAN DEFAULT FALSE,
+    requires_approval BOOLEAN DEFAULT FALSE,
+    cover_image_url VARCHAR(500),
+    created_by INT(11) NOT NULL,            -- Référence à users.id
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (organizer_id) REFERENCES users(id) ON DELETE CASCADE,
-    INDEX idx_organizer (organizer_id),
-    INDEX idx_date (date),
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_created_by (created_by),
+    INDEX idx_start_date (start_date),
     INDEX idx_status (status),
-    INDEX idx_category (category)
-);
+    INDEX idx_category (category),
+    INDEX idx_type (type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Participants aux événements
+-- Participants aux événements (Table de liaison)
 CREATE TABLE event_participants (
-    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    event_id VARCHAR(36) NOT NULL,
-    user_id VARCHAR(36) NOT NULL,
-    role ENUM('organizer', 'participant') DEFAULT 'participant',
-    status ENUM('pending', 'accepted', 'declined') DEFAULT 'pending',
-    invited_by VARCHAR(36),
+    id INT(11) AUTO_INCREMENT PRIMARY KEY,
+    event_id INT(11) NOT NULL,
+    user_id INT(11) NOT NULL,
+    role ENUM('organizer', 'co-organizer', 'participant') DEFAULT 'participant',
+    status ENUM('pending', 'accepted', 'declined', 'maybe') DEFAULT 'pending',
+    invited_by INT(11),
     invited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     responded_at TIMESTAMP NULL,
+    joined_at TIMESTAMP NULL,
+    left_at TIMESTAMP NULL,
+    notes TEXT,
+    UNIQUE KEY unique_participation (event_id, user_id),
     FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (invited_by) REFERENCES users(id) ON DELETE SET NULL,
-    UNIQUE KEY unique_participant (event_id, user_id),
-    INDEX idx_event_user (event_id, user_id),
-    INDEX idx_status (status)
-);
+    INDEX idx_event_participants_event (event_id),
+    INDEX idx_event_participants_user (user_id),
+    INDEX idx_event_participants_status (status),
+    INDEX idx_event_participants_role (role)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Tâches
-CREATE TABLE tasks (
-    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    event_id VARCHAR(36) NOT NULL,
-    title VARCHAR(200) NOT NULL,
+-- Tâches d'événements
+CREATE TABLE event_tasks (
+    id INT(11) AUTO_INCREMENT PRIMARY KEY,
+    event_id INT(11) NOT NULL,
+    title VARCHAR(255) NOT NULL,
     description TEXT,
-    assigned_to VARCHAR(36),
-    priority ENUM('low', 'medium', 'high') DEFAULT 'medium',
-    status ENUM('pending', 'in_progress', 'completed') DEFAULT 'pending',
+    assigned_to INT(11),
+    created_by INT(11) NOT NULL,
+    priority ENUM('low', 'medium', 'high', 'urgent') DEFAULT 'medium',
+    status ENUM('pending', 'in_progress', 'completed', 'cancelled') DEFAULT 'pending',
     due_date DATETIME,
     completed_at TIMESTAMP NULL,
-    created_by VARCHAR(36) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
     FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL,
     FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
-    INDEX idx_event (event_id),
-    INDEX idx_assigned (assigned_to),
-    INDEX idx_status (status),
-    INDEX idx_due_date (due_date)
-);
+    INDEX idx_event_tasks_event (event_id),
+    INDEX idx_event_tasks_assigned (assigned_to),
+    INDEX idx_event_tasks_status (status),
+    INDEX idx_event_tasks_priority (priority)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Budget d'événement
-CREATE TABLE budgets (
-    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    event_id VARCHAR(36) NOT NULL UNIQUE,
-    total_budget DECIMAL(10, 2) DEFAULT 0.00,
-    currency VARCHAR(3) DEFAULT 'EUR',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
-);
-
--- Transactions budgétaires
-CREATE TABLE budget_transactions (
-    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    budget_id VARCHAR(36) NOT NULL,
-    title VARCHAR(200) NOT NULL,
+-- Dépenses d'événements (Simplifié)
+CREATE TABLE event_expenses (
+    id INT(11) AUTO_INCREMENT PRIMARY KEY,
+    event_id INT(11) NOT NULL,
+    title VARCHAR(255) NOT NULL,
     description TEXT,
     amount DECIMAL(10, 2) NOT NULL,
-    category VARCHAR(50) NOT NULL,
-    type ENUM('expense', 'income') DEFAULT 'expense',
-    paid_by VARCHAR(36),
+    category VARCHAR(50),
+    paid_by INT(11) NOT NULL,
     receipt_url VARCHAR(500),
-    transaction_date DATE NOT NULL,
-    created_by VARCHAR(36) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (budget_id) REFERENCES budgets(id) ON DELETE CASCADE,
-    FOREIGN KEY (paid_by) REFERENCES users(id) ON DELETE SET NULL,
-    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
-    INDEX idx_budget (budget_id),
-    INDEX idx_category (category),
-    INDEX idx_date (transaction_date)
-);
-
--- Médias
-CREATE TABLE media (
-    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    event_id VARCHAR(36) NOT NULL,
-    filename VARCHAR(255) NOT NULL,
-    original_name VARCHAR(255) NOT NULL,
-    mime_type VARCHAR(100) NOT NULL,
-    size INT NOT NULL,
-    s3_key VARCHAR(500) NOT NULL,
-    s3_url VARCHAR(500) NOT NULL,
-    thumbnail_url VARCHAR(500),
-    type ENUM('image', 'video', 'document') NOT NULL,
-    uploaded_by VARCHAR(36) NOT NULL,
+    date_incurred DATE NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
-    FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE CASCADE,
-    INDEX idx_event (event_id),
-    INDEX idx_type (type),
-    INDEX idx_uploaded_by (uploaded_by)
-);
+    FOREIGN KEY (paid_by) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_event_expenses_event (event_id),
+    INDEX idx_event_expenses_paid_by (paid_by),
+    INDEX idx_event_expenses_date (date_incurred)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Sessions utilisateur (optionnel si pas Redis)
-CREATE TABLE user_sessions (
-    id VARCHAR(128) PRIMARY KEY,
-    user_id VARCHAR(36) NOT NULL,
-    data TEXT NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    INDEX idx_user (user_id),
-    INDEX idx_expires (expires_at)
-);
+-- Médias d'événements - DÉPLACÉ VERS MONGODB
+-- Les médias sont stockés dans MongoDB pour optimiser la gestion des fichiers
+-- et gérer efficacement les métadonnées complexes (EXIF, albums, tags, etc.).
+-- 
+-- Structure MongoDB : voir section 5.3.2 MongoDB
+-- Collection : event_media
+-- 
+-- AVANTAGES MongoDB pour les médias :
+-- ✅ Gestion native des métadonnées complexes (EXIF, géolocalisation, tags)
+-- ✅ Stockage flexible de propriétés variables (vidéo vs image vs document)
+-- ✅ Indexation full-text pour recherche de fichiers
+-- ✅ GridFS pour très gros fichiers (>16MB)
+-- ✅ Performance lecture/écriture pour galeries
+--
+-- Les références aux événements (event_id) et utilisateurs (uploaded_by) 
+-- restent des INT pour maintenir la cohérence avec MySQL.
+
+-- Messages d'événements - DÉPLACÉ VERS MONGODB
+-- Les messages sont stockés dans MongoDB pour optimiser les performances du chat temps réel
+-- Voir section 5.3.2 MongoDB pour la structure complète des messages
+
+-- Invitations d'événements
+CREATE TABLE event_invitations (
+    id INT(11) AUTO_INCREMENT PRIMARY KEY,
+    event_id INT(11) NOT NULL,
+    inviter_id INT(11) NOT NULL,
+    invitee_email VARCHAR(255) NOT NULL,
+    invitee_user_id INT(11),
+    invitation_token VARCHAR(255) UNIQUE NOT NULL,
+    status ENUM('sent', 'opened', 'accepted', 'declined', 'expired') DEFAULT 'sent',
+    expires_at DATETIME NOT NULL,
+    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    responded_at TIMESTAMP NULL,
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+    FOREIGN KEY (inviter_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (invitee_user_id) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_event_invitations_event (event_id),
+    INDEX idx_event_invitations_email (invitee_email),
+    INDEX idx_event_invitations_token (invitation_token)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 ```
 
-#### 5.3.2 MongoDB - Données Non-Relationnelles
+#### 5.3.2 MongoDB - Chat Temps Réel et Données Non-Relationnelles
 
 ```javascript
-// Collection: messages (Chat temps réel)
+// Collection: event_messages (Chat temps réel optimisé)
 {
   _id: ObjectId,
-  eventId: String,           // Référence à l'événement MySQL
-  senderId: String,          // Référence utilisateur MySQL
-  senderName: String,        // Dénormalisé pour performance
-  senderAvatar: String,      // Dénormalisé pour performance
-  type: String,              // 'text', 'image', 'file', 'system'
-  content: String,           // Contenu du message
-  metadata: {                // Métadonnées selon le type
-    filename: String,        // Pour les fichiers
+  eventId: Number,           // Référence events.id MySQL (INT)
+  senderId: Number,          // Référence users.id MySQL (INT)
+  
+  // Données dénormalisées pour performance (éviter les JOINs)
+  senderInfo: {
+    username: String,        // users.username dénormalisé
+    fname: String,           // users.fname dénormalisé  
+    lname: String,           // users.lname dénormalisé
+    avatarUrl: String        // users.avatar_url dénormalisé
+  },
+  
+  // Contenu du message
+  type: String,              // 'text', 'image', 'file', 'system', 'media'
+  content: String,           // Texte du message
+  
+  // Métadonnées conditionnelles
+  metadata: {
+    // Pour les fichiers/médias
+    filename: String,
+    originalFilename: String,
     fileSize: Number,
     fileUrl: String,
-    mentions: [String],      // IDs des utilisateurs mentionnés
-    replyTo: ObjectId        // ID du message parent
+    mimeType: String,
+    
+    // Pour les mentions et réponses
+    mentions: [Number],      // IDs utilisateurs mentionnés (users.id)
+    replyTo: ObjectId,       // ID du message parent MongoDB
+    
+    // Pour les messages système
+    systemAction: String,    // 'user_joined', 'task_completed', etc.
+    systemData: Object       // Données contextuelles
   },
-  reactions: [{              // Réactions aux messages
-    userId: String,
-    emoji: String,
+  
+  // Interactions sociales
+  reactions: [{
+    userId: Number,          // users.id (INT)
+    emoji: String,           // '👍', '❤️', '😂', etc.
     timestamp: Date
   }],
+  
+  // Statut de lecture par participant
+  readBy: [{
+    userId: Number,          // users.id (INT)  
+    readAt: Date
+  }],
+  
+  // Gestion modifications/suppression
   isEdited: Boolean,
   editedAt: Date,
   isDeleted: Boolean,
   deletedAt: Date,
-  readBy: [{                 // Statut de lecture
-    userId: String,
-    readAt: Date
-  }],
+  deletedBy: Number,       // users.id (INT)
+  
+  // Timestamps
   createdAt: Date,
   updatedAt: Date
 }
 
-// Index pour messages
-db.messages.createIndex({ "eventId": 1, "createdAt": -1 })
-db.messages.createIndex({ "senderId": 1 })
-db.messages.createIndex({ "createdAt": -1 })
+// Index pour event_messages (Chat optimisé)
+db.event_messages.createIndex({ "eventId": 1, "createdAt": -1 })    // Messages par événement (pagination)
+db.event_messages.createIndex({ "senderId": 1, "createdAt": -1 })   // Messages par utilisateur  
+db.event_messages.createIndex({ "eventId": 1, "isDeleted": 1 })     // Messages actifs par événement
+db.event_messages.createIndex({ "metadata.replyTo": 1 })            // Réponses aux messages
+db.event_messages.createIndex({ "metadata.mentions": 1 })           // Messages avec mentions
+db.event_messages.createIndex({ "createdAt": -1 })                  // Tri chronologique global
 
 // Collection: notifications
 {
   _id: ObjectId,
-  userId: String,            // Destinataire
+  userId: Number,            // Destinataire (INT)
   type: String,              // 'event_invite', 'task_assigned', 'message', 'reminder'
   title: String,
   body: String,
   data: {                    // Données contextuelles
-    eventId: String,
-    taskId: String,
-    senderId: String,
+    eventId: Number,         // INT au lieu de String
+    taskId: Number,          // INT au lieu de String
+    senderId: Number,        // INT au lieu de String
     actionUrl: String
   },
   status: String,            // 'pending', 'sent', 'delivered', 'read'
@@ -398,10 +440,10 @@ db.notifications.createIndex({ "createdAt": -1 })
 // Collection: activity_logs (Audit trail)
 {
   _id: ObjectId,
-  userId: String,
+  userId: Number,            // INT au lieu de String
   action: String,            // 'create', 'update', 'delete', 'login'
-  resource: String,          // 'event', 'task', 'budget', 'user'
-  resourceId: String,
+  resource: String,          // 'event', 'task', 'expense', 'user'
+  resourceId: Number,        // INT au lieu de String
   changes: {                 // Détails des modifications
     before: Object,
     after: Object
@@ -423,8 +465,8 @@ db.activity_logs.createIndex({ "timestamp": -1 })
 {
   _id: ObjectId,
   uploadId: String,          // ID unique de l'upload
-  userId: String,
-  eventId: String,
+  userId: Number,            // INT au lieu de String
+  eventId: Number,           // INT au lieu de String
   filename: String,
   mimeType: String,
   size: Number,
@@ -519,56 +561,65 @@ DELETE /api/events/:id/participants/:userId // Retirer participant
 
 GET    /api/events/:id/tasks       // Liste tâches
 POST   /api/events/:id/tasks       // Créer tâche
-PUT    /api/tasks/:id              // Modifier tâche
-DELETE /api/tasks/:id              // Supprimer tâche
+PUT    /api/events/:id/tasks/:taskId // Modifier tâche
+DELETE /api/events/:id/tasks/:taskId // Supprimer tâche
 
-GET    /api/events/:id/budget      // Budget événement
-PUT    /api/events/:id/budget      // Modifier budget
-POST   /api/events/:id/budget/transactions // Ajouter transaction
-PUT    /api/budget/transactions/:id // Modifier transaction
-DELETE /api/budget/transactions/:id // Supprimer transaction
+GET    /api/events/:id/expenses    // Liste dépenses événement
+POST   /api/events/:id/expenses    // Ajouter dépense
+PUT    /api/events/:id/expenses/:expenseId // Modifier dépense
+DELETE /api/events/:id/expenses/:expenseId // Supprimer dépense
 
-GET    /api/events/:id/media       // Liste médias
-POST   /api/events/:id/media       // Upload média
-DELETE /api/media/:id              // Supprimer média
+GET    /api/events/:id/media       // Liste médias (MongoDB)
+POST   /api/events/:id/media       // Upload média (MongoDB + S3)
+PUT    /api/media/:id              // Modifier métadonnées (MongoDB)
+DELETE /api/media/:id              // Supprimer média (MongoDB soft delete)
+POST   /api/media/:id/like         // Ajouter/retirer like (MongoDB)
+POST   /api/media/:id/comment      // Ajouter commentaire (MongoDB)
+GET    /api/events/:id/albums      // Liste albums (MongoDB)
+POST   /api/events/:id/albums      // Créer album (MongoDB)
 
-GET    /api/events/:id/messages    // Historique chat
-POST   /api/events/:id/messages    // Nouveau message
-PUT    /api/messages/:id           // Modifier message
-DELETE /api/messages/:id           // Supprimer message
+GET    /api/events/:id/messages    // Historique chat (MongoDB)
+POST   /api/events/:id/messages    // Nouveau message (MongoDB + WebSocket)  
+PUT    /api/messages/:id           // Modifier message (MongoDB)
+DELETE /api/messages/:id           // Supprimer message (MongoDB)
+POST   /api/messages/:id/react     // Ajouter réaction (MongoDB)
+PUT    /api/messages/:id/read      // Marquer comme lu (MongoDB)
 
 GET    /api/notifications          // Liste notifications
 PUT    /api/notifications/:id/read // Marquer comme lu
 POST   /api/notifications/device   // Enregistrer token device
 ```
 
-### 5.6 WebSocket Events (Socket.io)
+### 5.6 WebSocket Events (Socket.io) - Chat MongoDB
 
 ```typescript
-// Événements Socket.io
+// Événements Socket.io pour chat temps réel (MongoDB)
 namespace '/events/:eventId' {
   // Connection/Déconnection
   'join_event'     // Rejoindre chat événement
   'leave_event'    // Quitter chat événement
   
-  // Chat temps réel
-  'new_message'    // Nouveau message
-  'message_edited' // Message modifié
-  'message_deleted' // Message supprimé
-  'typing_start'   // Utilisateur tape
-  'typing_stop'    // Utilisateur arrête de taper
-  'message_read'   // Message lu
+  // Chat temps réel (MongoDB)
+  'new_message'    // Nouveau message → MongoDB event_messages
+  'message_edited' // Message modifié → MongoDB update
+  'message_deleted' // Message supprimé → MongoDB soft delete
+  'message_reaction' // Réaction ajoutée → MongoDB reactions array
+  'typing_start'   // Utilisateur tape (Redis cache)
+  'typing_stop'    // Utilisateur arrête de taper (Redis)
+  'message_read'   // Message lu → MongoDB readBy array
+  'messages_bulk_read' // Marquer plusieurs messages lus
   
-  // Notifications temps réel
-  'participant_joined'  // Nouveau participant
-  'participant_left'    // Participant parti
-  'task_updated'        // Tâche modifiée
-  'budget_updated'      // Budget modifié
-  'event_updated'       // Événement modifié
+  // Données temps réel synchronisées MySQL ↔ MongoDB
+  'participant_joined'  // Nouveau participant (MySQL) → notification (MongoDB)
+  'participant_left'    // Participant parti (MySQL) → message système (MongoDB)  
+  'task_updated'        // Tâche modifiée (MySQL) → message système (MongoDB)
+  'budget_updated'      // Budget modifié (MySQL) → message système (MongoDB)
+  'event_updated'       // Événement modifié (MySQL) → message système (MongoDB)
   
-  // Statut utilisateurs
+  // Statut utilisateurs (Redis cache)
   'user_online'    // Utilisateur en ligne
   'user_offline'   // Utilisateur hors ligne
+  'users_online'   // Liste utilisateurs en ligne
 }
 ```
 
@@ -590,38 +641,274 @@ Cette architecture monolithique Express.js offre une base solide tout en restant
 #### Structure des Dossiers
 
 ```plaintext
-frontend/
-├── app/                            # Routes Expo Router
-│   ├── +layout.tsx                 # Layout global (theme, AuthContext…)
-│   ├── index.tsx                   # Home (dashboard)
-│   ├── login.tsx
-│   ├── register.tsx
-│   ├── profile.tsx
-│   ├── settings.tsx
-│   ├── create-event.tsx
-│   └── events/
-│       └── [eventId]/              # Dossier dynamique
-│           ├── index.tsx           # Résumé de l’événement
-│           ├── tasks.tsx           # Liste des tâches
-│           ├── budget.tsx          # Budget collaboratif
-│           ├── media.tsx           # Galerie média
-│           ├── chat.tsx            # Chat de l’événement
-│           └── manage.tsx          # Paramètres de l’événement
+Iven/
+├── app/                               # Routes Expo Router
+│   ├── (auth)/                        # Groupe routes authentification
+│   │   ├── _layout.tsx                # Layout auth + KeyboardAvoidingView
+│   │   ├── login.tsx                  # Connexion
+│   │   ├── register.tsx               # Inscription
+│   │   └── forgot-password.tsx        # Mot de passe oublié
+│   ├── (tabs)/                        # Groupe routes avec tabs
+│   │   ├── _layout.tsx                # Bottom tabs + KeyboardAvoidingView
+│   │   ├── index.tsx                  # Home/Dashboard
+│   │   ├── events/
+│   │   │   ├── _layout.tsx            # Stack navigation événements
+│   │   │   ├── index.tsx              # Liste événements (allevents)
+│   │   │   └── [id]/                  # Événement dynamique
+│   │   │       ├── _layout.tsx        # Tabs événement
+│   │   │       ├── index.tsx          # Résumé de l'événement
+│   │   │       ├── tasks.tsx          # Liste des tâches
+│   │   │       ├── budget.tsx         # Budget collaboratif
+│   │   │       ├── media.tsx          # Galerie média
+│   │   │       ├── chat.tsx           # Chat de l'événement
+│   │   │       └── manage.tsx         # Paramètres de l'événement
+│   │   ├── tasks/                     # Section tâches globales
+│   │   │   ├── index.tsx              # Liste toutes les tâches
+│   │   │   └── [id].tsx               # Détail tâche individuelle
+│   │   ├── media/                     # Section médias globaux
+│   │   │   ├── index.tsx              # Galerie tous médias
+│   │   │   └── [id].tsx               # Visualiseur média individuel
+│   │   ├── users/                     # Section utilisateurs
+│   │   │   ├── index.tsx              # Liste/recherche utilisateurs
+│   │   │   └── [id].tsx               # Profil utilisateur public
+│   │   ├── calendar/
+│   │   │   └── index.tsx              # Vue calendrier
+│   │   └── profile/
+│   │       ├── index.tsx              # Profil utilisateur connecté
+│   │       └── settings.tsx           # Paramètres app
+│   ├── modals/                        # Modales (présentation modale)
+│   │   ├── create-event.tsx           # Création événement
+│   │   ├── edit-profile.tsx           # Édition profil
+│   │   ├── media-viewer.tsx           # Visualiseur média plein écran
+│   │   ├── invite-participants.tsx    # Invitation participants
+│   │   ├── task-detail.tsx            # Détail/édition tâche
+│   │   └── expense-form.tsx           # Ajout/édition dépense
+│   ├── notifications/                 # Notifications
+│   │   └── index.tsx                  # Liste notifications
+│   ├── _layout.tsx                    # Layout global (providers + KeyboardAvoidingView)
+│   └── +not-found.tsx                 # Page 404
 ├── components/
-│   ├── screens/                    # Écrans avec logique métier
-│   ├── ui/                         # Composants génériques (Button, Input…)
-│   ├── events/                     # EventCard, EventHeader…
-│   ├── media/                      # MediaUploader, MediaGrid…
-│   ├── chat/                       # MessageBubble, ChatInput…
-│   └── hooks/                      # useAuth, useEvent, useUpload…
-├── services/                       # api.ts, auth.ts, event.ts, media.ts…
-├── contexts/                       # AuthContext, ThemeContext…
-├── store/                          # Zustand/Redux (état UI, offline…)
-├── types/                          # Typages partagés
-├── utils/                          # formatDate, debounce…
-├── assets/                         # Icônes, images, polices
-└── app.config.ts                   # Configuration Expo
-```
+│   ├── ui/                            # Design System (Atomic Design)
+│   │   ├── atoms/                     # Composants de base
+│   │   │   ├── Button.tsx             # Boutons avec variantes
+│   │   │   ├── Input.tsx              # Champs de saisie
+│   │   │   ├── Text.tsx               # Texte avec styles
+│   │   │   ├── Avatar.tsx             # Avatar utilisateur
+│   │   │   ├── Badge.tsx              # Badges/étiquettes
+│   │   │   ├── Spinner.tsx            # Indicateur de chargement
+│   │   │   ├── Icon.tsx               # Icônes avec thème
+│   │   │   └── Divider.tsx            # Séparateurs
+│   │   ├── molecules/                 # Composants composés
+│   │   │   ├── Card.tsx               # Cartes avec variantes
+│   │   │   ├── Modal.tsx              # Modales
+│   │   │   ├── SearchBar.tsx          # Barre de recherche
+│   │   │   ├── DatePicker.tsx         # Sélecteur de date
+│   │   │   ├── ImagePicker.tsx        # Sélecteur d'images
+│   │   │   ├── LoadingOverlay.tsx     # Overlay de chargement
+│   │   │   ├── EmptyState.tsx         # État vide
+│   │   │   └── ErrorBoundary.tsx      # Gestion d'erreurs
+│   │   └── organisms/                 # Composants complexes
+│   │       ├── Header.tsx             # En-têtes
+│   │       ├── BottomTabs.tsx         # Navigation tabs
+│   │       ├── ParticipantsList.tsx   # Liste participants
+│   │       └── NotificationBanner.tsx # Bannières notifications
+│   ├── features/                      # Composants par fonctionnalité
+│   │   ├── auth/
+│   │   │   ├── LoginForm.tsx          # Formulaire connexion
+│   │   │   ├── RegisterForm.tsx       # Formulaire inscription
+│   │   │   ├── AuthGuard.tsx          # Protection routes
+│   │   │   └── SocialLogin.tsx        # Connexion sociale (optionnel)
+│   │   ├── events/
+│   │   │   ├── EventCard.tsx          # Carte événement
+│   │   │   ├── EventForm.tsx          # Formulaire événement
+│   │   │   ├── EventHeader.tsx        # En-tête événement
+│   │   │   ├── EventList.tsx          # Liste événements
+│   │   │   ├── ParticipantCard.tsx    # Carte participant
+│   │   │   ├── InviteModal.tsx        # Modal invitation
+│   │   │   └── EventFilters.tsx       # Filtres événements
+│   │   ├── tasks/
+│   │   │   ├── TaskCard.tsx           # Carte tâche
+│   │   │   ├── TaskForm.tsx           # Formulaire tâche
+│   │   │   ├── TaskList.tsx           # Liste tâches
+│   │   │   └── TaskFilters.tsx        # Filtres tâches
+│   │   ├── budget/
+│   │   │   ├── BudgetSummary.tsx      # Résumé budget
+│   │   │   ├── ExpenseCard.tsx        # Carte dépense
+│   │   │   ├── ExpenseForm.tsx        # Formulaire dépense
+│   │   │   └── BudgetChart.tsx        # Graphique budget (optionnel)
+│   │   ├── media/
+│   │   │   ├── MediaGrid.tsx          # Grille médias
+│   │   │   ├── MediaCard.tsx          # Carte média
+│   │   │   ├── MediaUploader.tsx      # Upload média
+│   │   │   ├── MediaViewer.tsx        # Visualiseur média
+│   │   │   └── MediaFilters.tsx       # Filtres médias
+│   │   ├── chat/
+│   │   │   ├── MessageBubble.tsx      # Bulle de message
+│   │   │   ├── MessageInput.tsx       # Saisie message
+│   │   │   ├── MessageList.tsx        # Liste messages
+│   │   │   ├── TypingIndicator.tsx    # Indicateur frappe
+│   │   │   └── ChatHeader.tsx         # En-tête chat
+│   │   ├── calendar/
+│   │   │   ├── CalendarView.tsx       # Vue calendrier
+│   │   │   ├── EventCalendar.tsx      # Calendrier événements
+│   │   │   └── DateSelector.tsx       # Sélecteur date
+│   │   └── profile/
+│   │       ├── ProfileHeader.tsx      # En-tête profil
+│   │       ├── ProfileForm.tsx        # Formulaire profil
+│   │       ├── SettingsSection.tsx    # Section paramètres
+│   │       └── AvatarUpload.tsx       # Upload avatar
+│   ├── screens/                       # Écrans avec logique métier (existant)
+│   │   ├── HomeScreen.tsx             # Écran d'accueil
+│   │   ├── LoginScreen.tsx            # Écran connexion
+│   │   ├── RegisterScreen.tsx         # Écran inscription
+│   │   ├── EventsScreen.tsx           # Écran événements
+│   │   ├── ProfileScreen.tsx          # Écran profil
+│   │   └── SettingsScreen.tsx         # Écran paramètres
+│   └── providers/                     # Providers HOC (optionnel)
+│       ├── QueryProvider.tsx          # React Query wrapper
+│       └── AuthGuardProvider.tsx      # Protection routes wrapper
+├── hooks/                             # Hooks personnalisés
+│   ├── api/                           # Hooks API (React Query)
+│   │   ├── useAuth.ts                 # Authentification
+│   │   ├── useEvents.ts               # Événements
+│   │   ├── useTasks.ts                # Tâches
+│   │   ├── useBudget.ts               # Budget
+│   │   ├── useMedia.ts                # Médias
+│   │   ├── useChat.ts                 # Chat
+│   │   ├── useNotifications.ts        # Notifications
+│   │   └── useUsers.ts                # Utilisateurs
+│   ├── ui/                            # Hooks UI/UX (essentiels)
+│   │   ├── usePermissions.ts          # Permissions (caméra, localisation)
+│   │   ├── useImagePicker.ts          # Sélection images/vidéos
+│   │   ├── useDebounce.ts             # Debounce recherche
+│   │   └── useHaptics.ts              # Retour haptique (optionnel)
+│   └── utils/                         # Hooks utilitaires (core)
+│       ├── useStorage.ts              # AsyncStorage helpers
+│       ├── useNetworkStatus.ts        # État réseau (mode offline)
+│       └── useLocation.ts             # Géolocalisation
+├── services/                          # Services & API
+│   ├── api/
+│   │   ├── client.ts                  # Configuration Axios
+│   │   ├── auth.service.ts            # API authentification
+│   │   ├── events.service.ts          # API événements
+│   │   ├── tasks.service.ts           # API tâches
+│   │   ├── budget.service.ts          # API budget
+│   │   ├── media.service.ts           # API médias + S3
+│   │   ├── chat.service.ts            # API chat
+│   │   ├── notifications.service.ts   # API notifications
+│   │   └── users.service.ts           # API utilisateurs
+│   ├── storage/
+│   │   ├── secureStorage.ts           # Keychain/Keystore (tokens)
+│   │   ├── asyncStorage.ts            # AsyncStorage helpers
+│   │   └── cacheStorage.ts            # Cache local (optionnel)
+│   ├── notifications/
+│   │   ├── pushNotifications.ts       # Push notifications
+│   │   └── localNotifications.ts      # Notifications locales
+│   ├── media/
+│   │   ├── imageProcessor.ts          # Traitement images (resize, etc.)
+│   │   └── fileUpload.ts              # Upload S3 avec presigned URLs
+│   ├── socket/
+│   │   ├── socketClient.ts            # Client Socket.io
+│   │   └── chatSocket.ts              # Gestion chat temps réel
+│   ├── LoggerService.ts               # Logging (existant)
+│   └── utils/
+│       ├── analytics.ts               # Analytics (optionnel)
+│       └── crashlytics.ts             # Crash reporting (optionnel)
+├── contexts/                          # Contextes React
+│   ├── ThemeContext.tsx               # Thème (existant)
+│   ├── AuthContext.tsx                # Authentification
+│   ├── SocketContext.tsx              # WebSocket connexion
+│   ├── NotificationContext.tsx        # Notifications in-app
+│   └── index.ts                       # Exports centralisés
+├── store/                             # Gestion d'état (Zustand)
+│   ├── slices/
+│   │   ├── authSlice.ts               # État authentification
+│   │   ├── eventsSlice.ts             # État événements
+│   │   ├── chatSlice.ts               # État chat (messages, typing)
+│   │   ├── uiSlice.ts                 # État UI (modales, notifications)
+│   │   └── offlineSlice.ts            # État hors ligne (optionnel)
+│   ├── middleware/
+│   │   ├── persistMiddleware.ts       # Persistance état
+│   │   └── devtoolsMiddleware.ts      # Redux DevTools
+│   ├── selectors/
+│   │   ├── authSelectors.ts           # Sélecteurs auth
+│   │   ├── eventsSelectors.ts         # Sélecteurs événements
+│   │   └── chatSelectors.ts           # Sélecteurs chat
+│   └── index.ts                       # Store principal
+├── types/                             # Types TypeScript
+│   ├── api/                           # Types API
+│   │   ├── auth.types.ts              # Types authentification
+│   │   ├── events.types.ts            # Types événements (existant)
+│   │   ├── tasks.types.ts             # Types tâches (existant)
+│   │   ├── budget.types.ts            # Types budget
+│   │   ├── media.types.ts             # Types médias
+│   │   ├── chat.types.ts              # Types chat
+│   │   ├── notifications.types.ts     # Types notifications
+│   │   └── common.types.ts            # Types communs (API responses, etc.)
+│   ├── navigation.types.ts            # Types navigation Expo Router
+│   ├── storage.types.ts               # Types stockage
+│   ├── users.ts                       # Types utilisateurs (existant)
+│   ├── categories.ts                  # Types catégories (existant)
+│   └── global.d.ts                    # Types globaux
+├── utils/                             # Utilitaires
+│   ├── formatters/
+│   │   ├── date.ts                    # Formatage dates
+│   │   ├── currency.ts                # Formatage monnaie
+│   │   ├── text.ts                    # Formatage texte
+│   │   └── fileSize.ts                # Formatage taille fichiers
+│   ├── validators/
+│   │   ├── schemas.ts                 # Schémas Zod validation
+│   │   ├── rules.ts                   # Règles validation
+│   │   └── sanitizers.ts              # Nettoyage données
+│   ├── constants/
+│   │   ├── colors.ts                  # Couleurs design system
+│   │   ├── sizes.ts                   # Tailles et espacements
+│   │   ├── typography.ts              # Polices et tailles texte
+│   │   ├── config.ts                  # Configuration app
+│   │   └── endpoints.ts               # URLs API
+│   ├── helpers/
+│   │   ├── permissions.ts             # Gestion permissions
+│   │   ├── platform.ts                # Détection plateforme iOS/Android
+│   │   ├── device.ts                  # Informations device
+│   │   ├── navigation.ts              # Helpers navigation
+│   │   └── error.ts                   # Gestion erreurs
+│   └── transformers/
+│       ├── apiTransformers.ts         # Transformation données API
+│       └── dataMappers.ts             # Mapping données
+├── styles/                            # Styles et thèmes
+│   ├── themes/
+│   │   ├── light.ts                   # Thème clair
+│   │   ├── dark.ts                    # Thème sombre
+│   │   └── index.ts                   # Export thèmes
+│   ├── tokens/                        # Design tokens
+│   │   ├── colors.ts                  # Palette couleurs
+│   │   ├── typography.ts              # Système typographique
+│   │   ├── spacing.ts                 # Espacements
+│   │   ├── shadows.ts                 # Ombres
+│   │   └── borders.ts                 # Bordures et radius
+│   ├── global.ts                      # Styles globaux (existant)
+│   └── animations.ts                  # Animations réutilisables
+├── data/                              # Données mock/statiques (existant)
+│   ├── events.json                    # Événements mock
+│   ├── users.json                     # Utilisateurs mock
+│   ├── tasks.json                     # Tâches mock
+│   ├── categories.json                # Catégories
+│   └── media.json                     # Médias mock
+├── assets/                            # Ressources statiques
+│   ├── images/                        # Images de l'app
+│   ├── icons/                         # Icônes personnalisées
+│   ├── fonts/                         # Polices personnalisées (optionnel)
+│   └── animations/                    # Animations Lottie (optionnel)
+├── __tests__/                         # Tests (optionnel pour MVP)
+│   ├── components/                    # Tests composants
+│   ├── hooks/                         # Tests hooks
+│   ├── services/                      # Tests services
+│   └── __mocks__/                     # Mocks pour tests
+├── babel.config.js                    # Configuration Babel
+├── tailwind.config.js                 # Configuration Tailwind
+├── app.json                           # Configuration Expo
+├── tsconfig.json                      # Configuration TypeScript
+└── package.json                       # Dépendances projet
 
 #### Module Média
 

@@ -247,6 +247,25 @@ const authController = {
       logger.error('Erreur envoi email:', error);
       res.status(500).json({ message: 'Erreur lors de l\'envoi du code de confirmation' });
     }
+  },
+
+  async logout(req, res) {
+    try {
+      const token = req.headers.authorization;
+      if (!token) {
+        return res.status(401).json({ message: 'Token non fourni' });
+      }
+
+
+
+    //  await User.updateLastLogin(userId); 
+
+      res.json({ message: 'Déconnexion réussie' });
+
+    } catch (error) {
+      logger.error('Erreur logout:', error);
+      res.status(500).json({ message: 'Erreur lors de la déconnexion' });
+    }
   }
 };
 
