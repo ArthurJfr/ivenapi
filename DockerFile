@@ -1,12 +1,35 @@
-# backend/Dockerfile
+# Utiliser une image Node.js Alpine plus récente et sécurisée
 FROM node:20-alpine
 
+# Créer un utilisateur non-root pour la sécurité
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nodejs -u 1001
+
+# Définir le répertoire de travail
 WORKDIR /app
 
-COPY package.json ./
-RUN npm install
+# Copier les fichiers de dépendances d'abord pour optimiser le cache Docker
+COPY package*.json ./
 
+# Installer les dépendances
+RUN npm ci --only=production && npm cache clean --force
+
+# Copier le code source
 COPY . .
 
+# Créer les dossiers nécessaires et définir les permissions
+RUN mkdir -p uploads/profiles logs && \
+    chown -R nodejs:nodejs /app
+
+# Passer à l'utilisateur non-root
+USER nodejs
+
+# Exposer le port
 EXPOSE 3000
+
+# Variables d'environnement par défaut
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# Commande de démarrage
 CMD ["node", "server.js"]

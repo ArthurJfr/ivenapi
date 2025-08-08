@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  # Service API
+  api:
+    build: .
+    container_name: iven-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      # Variables de base de données
+      - DB_HOST=db
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      # Variables JWT et autres
+      - JWT_SECRET=${JWT_SECRET}
+      - MONGO_URI=${MONGO_URI}
+      # Variables email
+      - EMAIL_HOST=${EMAIL_HOST}
+      - EMAIL_PORT=${EMAIL_PORT}
+      - EMAIL_USER=${EMAIL_USER}
+      - EMAIL_PASS=${EMAIL_PASS}
+    depends_on:
+      - db
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    networks:
+      - iven-network
+
+  # Service Base de données MySQL
+  db:
+    image: mysql:8.0
+    container_name: iven-mysql
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${DB_NAME}
+      - MYSQL_USER=${DB_USER}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - iven-network
+    command: --default-authentication-plugin=mysql_native_password
+
+  # Service Nginx (optionnel pour le reverse proxy)
+  nginx:
+    image: nginx:alpine
+    container_name: iven-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - api
+    networks:
+      - iven-network
+
+volumes:
+  mysql_data:
+
+networks:
+  iven-network:
+    driver: bridge
