@@ -17,6 +17,5 @@ uploads/
 coverage/
 .nyc_output/
 *.md
-Dockerfile
 docker-compose.yml
 .dockerignore

@@ -85,7 +85,9 @@ initializeUploadDirectories()
 
 // Test de la connexion MySQL avant de démarrer le serveur
 testMySQLConnection().then(() => {
-  app.listen(process.env.PORT, () => {
-    console.log(`Server is running on port ${process.env.PORT}`);
+  const port = process.env.PORT || 3000;
+  const host = '0.0.0.0';
+  app.listen(port, host, () => {
+    console.log(`Server is running on http://${host}:${port}`);
   });
 });

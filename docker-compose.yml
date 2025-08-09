@@ -3,7 +3,9 @@ version: '3.8'
 services:
   # Service API
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: iven-api
     restart: unless-stopped
     ports:
@@ -12,27 +14,31 @@ services:
       - NODE_ENV=production
       - PORT=3000
       # Variables de base de données
-      - DB_HOST=db
+      - DB_HOST=${DB_HOST}
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
+      - DB_NAME=${DB_NAME} 
       # Variables JWT et autres
       - JWT_SECRET=${JWT_SECRET}
       - MONGO_URI=${MONGO_URI}
-      # Variables email
-      - EMAIL_HOST=${EMAIL_HOST}
-      - EMAIL_PORT=${EMAIL_PORT}
-      - EMAIL_USER=${EMAIL_USER}
-      - EMAIL_PASS=${EMAIL_PASS}
+      # Variables SMTP/Email
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_SECURE=${SMTP_SECURE}
+      - SMTP_FROM=${SMTP_FROM}
+      - FRONTEND_URL=${FRONTEND_URL}
     depends_on:
       - db
+      - mongo
     volumes:
-      - ./uploads:/app/uploads
-      - ./logs:/app/logs
+      - uploads_data:/app/uploads
+      - logs_data:/app/logs
     networks:
       - iven-network
 
-  # Service Base de données MySQL
+  # Service Base de données MySQL (non exposé publiquement)
   db:
     image: mysql:8.0
     container_name: iven-mysql
@@ -42,8 +48,6 @@ services:
       - MYSQL_DATABASE=${DB_NAME}
       - MYSQL_USER=${DB_USER}
       - MYSQL_PASSWORD=${DB_PASSWORD}
-    ports:
-      - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -51,24 +55,21 @@ services:
       - iven-network
     command: --default-authentication-plugin=mysql_native_password
 
-  # Service Nginx (optionnel pour le reverse proxy)
-  nginx:
-    image: nginx:alpine
-    container_name: iven-nginx
+  # Service MongoDB (non exposé publiquement)
+  mongo:
+    image: mongo:6
+    container_name: iven-mongo
     restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
-      - ./ssl:/etc/nginx/ssl
-    depends_on:
-      - api
+      - mongo_data:/data/db
     networks:
       - iven-network
 
 volumes:
   mysql_data:
+  mongo_data:
+  uploads_data:
+  logs_data:
 
 networks:
   iven-network:
