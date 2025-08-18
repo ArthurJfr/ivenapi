@@ -7,6 +7,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# Copie du fichier .env.example vers .env
+echo "Copie du fichier .env.example vers .env (si non existant)"
+cp .env.example .env
+
 echo "[1/4] Construction des images..."
 docker compose build --no-cache
 
