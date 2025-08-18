@@ -11,7 +11,7 @@ const healthRoutes = require('./routes/health.route');
 const logger = require('./config/logger');
 const loggerMiddleware = require('./middleware/logger.middleware');
 const { initializeUploadDirectories } = require('./config/init');
-
+const eventRoutes = require('./routes/event.route');
 // Test de la connexion MySQL
 const testMySQLConnection = async () => {
   try {
@@ -48,10 +48,9 @@ mongoose.connection.on("connected", () => {
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/event', eventRoutes);
 //app.use('/api/articles', articleRoutes);
-app.get("/", (req, res) => {
-  res.send("Bonjour le monde");
-});
+
 
 // Ajoutez le middleware de logging
 app.use(loggerMiddleware);

@@ -201,291 +201,95 @@ ADD COLUMN timezone VARCHAR(50) DEFAULT 'Europe/Paris' AFTER phone,
 ADD COLUMN notification_preferences JSON DEFAULT '{"email": true, "push": true, "sms": false}' AFTER timezone;
 */
 
--- Événements (Nouvelle table - IDs INT pour compatibilité)
+-- Événements (Structure simplifiée)
 CREATE TABLE events (
-    id INT(11) AUTO_INCREMENT PRIMARY KEY,
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    owner_id INT NOT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT,
+    date DATETIME NOT NULL,
     location VARCHAR(255),
-    latitude DECIMAL(10, 8),
-    longitude DECIMAL(11, 8),
-    start_date DATETIME NOT NULL,           -- Date et heure de début
-    end_date DATETIME,                      -- Date et heure de fin
-    start_time TIME,                        -- Heure de début (séparée)
-    end_time TIME,                         -- Heure de fin (séparée)
-    max_participants INT(11),
-    status ENUM('upcoming', 'ongoing', 'completed', 'cancelled') DEFAULT 'upcoming',
-    category VARCHAR(50),
-    type ENUM('perso', 'pro') DEFAULT 'perso',
-    is_public BOOLEAN DEFAULT FALSE,
-    requires_approval BOOLEAN DEFAULT FALSE,
-    cover_image_url VARCHAR(500),
-    created_by INT(11) NOT NULL,            -- Référence à users.id
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
-    INDEX idx_created_by (created_by),
-    INDEX idx_start_date (start_date),
-    INDEX idx_status (status),
-    INDEX idx_category (category),
-    INDEX idx_type (type)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
 
--- Participants aux événements (Table de liaison)
+-- Participants aux événements (Structure simplifiée)
 CREATE TABLE event_participants (
-    id INT(11) AUTO_INCREMENT PRIMARY KEY,
-    event_id INT(11) NOT NULL,
-    user_id INT(11) NOT NULL,
-    role ENUM('organizer', 'co-organizer', 'participant') DEFAULT 'participant',
-    status ENUM('pending', 'accepted', 'declined', 'maybe') DEFAULT 'pending',
-    invited_by INT(11),
-    invited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    responded_at TIMESTAMP NULL,
-    joined_at TIMESTAMP NULL,
-    left_at TIMESTAMP NULL,
-    notes TEXT,
-    UNIQUE KEY unique_participation (event_id, user_id),
-    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (invited_by) REFERENCES users(id) ON DELETE SET NULL,
-    INDEX idx_event_participants_event (event_id),
-    INDEX idx_event_participants_user (user_id),
-    INDEX idx_event_participants_status (status),
-    INDEX idx_event_participants_role (role)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    event_id INT NOT NULL,
+    user_id INT NOT NULL,
+    role ENUM('owner', 'participant') NOT NULL DEFAULT 'participant',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
 
--- Tâches d'événements
+-- Tâches d'événements (Structure simplifiée)
 CREATE TABLE event_tasks (
-    id INT(11) AUTO_INCREMENT PRIMARY KEY,
-    event_id INT(11) NOT NULL,
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    owner_id INT NOT NULL,
+    event_id INT NOT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT,
-    assigned_to INT(11),
-    created_by INT(11) NOT NULL,
-    priority ENUM('low', 'medium', 'high', 'urgent') DEFAULT 'medium',
-    status ENUM('pending', 'in_progress', 'completed', 'cancelled') DEFAULT 'pending',
-    due_date DATETIME,
-    completed_at TIMESTAMP NULL,
+    validated_by INT DEFAULT NULL,
+    status ENUM('pending', 'completed') NOT NULL DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
-    FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL,
-    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
-    INDEX idx_event_tasks_event (event_id),
-    INDEX idx_event_tasks_assigned (assigned_to),
-    INDEX idx_event_tasks_status (status),
-    INDEX idx_event_tasks_priority (priority)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
 
--- Dépenses d'événements (Simplifié)
+-- Dépenses d'événements (Structure simplifiée)
 CREATE TABLE event_expenses (
-    id INT(11) AUTO_INCREMENT PRIMARY KEY,
-    event_id INT(11) NOT NULL,
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    owner_id INT NOT NULL,
+    event_id INT NOT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT,
+    paid_by INT NOT NULL,
     amount DECIMAL(10, 2) NOT NULL,
-    category VARCHAR(50),
-    paid_by INT(11) NOT NULL,
-    receipt_url VARCHAR(500),
-    date_incurred DATE NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
-    FOREIGN KEY (paid_by) REFERENCES users(id) ON DELETE CASCADE,
-    INDEX idx_event_expenses_event (event_id),
-    INDEX idx_event_expenses_paid_by (paid_by),
-    INDEX idx_event_expenses_date (date_incurred)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
 
--- Médias d'événements - DÉPLACÉ VERS MONGODB
--- Les médias sont stockés dans MongoDB pour optimiser la gestion des fichiers
--- et gérer efficacement les métadonnées complexes (EXIF, albums, tags, etc.).
--- 
--- Structure MongoDB : voir section 5.3.2 MongoDB
--- Collection : event_media
--- 
--- AVANTAGES MongoDB pour les médias :
--- ✅ Gestion native des métadonnées complexes (EXIF, géolocalisation, tags)
--- ✅ Stockage flexible de propriétés variables (vidéo vs image vs document)
--- ✅ Indexation full-text pour recherche de fichiers
--- ✅ GridFS pour très gros fichiers (>16MB)
--- ✅ Performance lecture/écriture pour galeries
---
--- Les références aux événements (event_id) et utilisateurs (uploaded_by) 
--- restent des INT pour maintenir la cohérence avec MySQL.
-
--- Messages d'événements - DÉPLACÉ VERS MONGODB
--- Les messages sont stockés dans MongoDB pour optimiser les performances du chat temps réel
--- Voir section 5.3.2 MongoDB pour la structure complète des messages
-
--- Invitations d'événements
-CREATE TABLE event_invitations (
-    id INT(11) AUTO_INCREMENT PRIMARY KEY,
-    event_id INT(11) NOT NULL,
-    inviter_id INT(11) NOT NULL,
-    invitee_email VARCHAR(255) NOT NULL,
-    invitee_user_id INT(11),
-    invitation_token VARCHAR(255) UNIQUE NOT NULL,
-    status ENUM('sent', 'opened', 'accepted', 'declined', 'expired') DEFAULT 'sent',
-    expires_at DATETIME NOT NULL,
-    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    responded_at TIMESTAMP NULL,
-    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
-    FOREIGN KEY (inviter_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (invitee_user_id) REFERENCES users(id) ON DELETE SET NULL,
-    INDEX idx_event_invitations_event (event_id),
-    INDEX idx_event_invitations_email (invitee_email),
-    INDEX idx_event_invitations_token (invitation_token)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+-- Note : Les médias sont stockés dans un volume Docker persistant (/app/uploads)
+-- Les invitations et messages sont gérés via MongoDB pour les fonctionnalités avancées
 ```
 
 #### 5.3.2 MongoDB - Chat Temps Réel et Données Non-Relationnelles
 
 ```javascript
-// Collection: event_messages (Chat temps réel optimisé)
+// Collection: event_messages (Chat temps réel simplifié)
 {
   _id: ObjectId,
   eventId: Number,           // Référence events.id MySQL (INT)
-  senderId: Number,          // Référence users.id MySQL (INT)
-  
-  // Données dénormalisées pour performance (éviter les JOINs)
-  senderInfo: {
-    username: String,        // users.username dénormalisé
-    fname: String,           // users.fname dénormalisé  
-    lname: String,           // users.lname dénormalisé
-    avatarUrl: String        // users.avatar_url dénormalisé
-  },
-  
-  // Contenu du message
-  type: String,              // 'text', 'image', 'file', 'system', 'media'
-  content: String,           // Texte du message
-  
-  // Métadonnées conditionnelles
-  metadata: {
-    // Pour les fichiers/médias
-    filename: String,
-    originalFilename: String,
-    fileSize: Number,
-    fileUrl: String,
-    mimeType: String,
-    
-    // Pour les mentions et réponses
-    mentions: [Number],      // IDs utilisateurs mentionnés (users.id)
-    replyTo: ObjectId,       // ID du message parent MongoDB
-    
-    // Pour les messages système
-    systemAction: String,    // 'user_joined', 'task_completed', etc.
-    systemData: Object       // Données contextuelles
-  },
-  
-  // Interactions sociales
-  reactions: [{
-    userId: Number,          // users.id (INT)
-    emoji: String,           // '👍', '❤️', '😂', etc.
-    timestamp: Date
-  }],
-  
-  // Statut de lecture par participant
-  readBy: [{
-    userId: Number,          // users.id (INT)  
-    readAt: Date
-  }],
-  
-  // Gestion modifications/suppression
-  isEdited: Boolean,
-  editedAt: Date,
-  isDeleted: Boolean,
-  deletedAt: Date,
-  deletedBy: Number,       // users.id (INT)
-  
-  // Timestamps
-  createdAt: Date,
-  updatedAt: Date
+  userId: Number,            // Référence users.id MySQL (INT)
+  message: String,           // Contenu du message
+  timestamp: Date            // Horodatage
 }
-
-// Index pour event_messages (Chat optimisé)
-db.event_messages.createIndex({ "eventId": 1, "createdAt": -1 })    // Messages par événement (pagination)
-db.event_messages.createIndex({ "senderId": 1, "createdAt": -1 })   // Messages par utilisateur  
-db.event_messages.createIndex({ "eventId": 1, "isDeleted": 1 })     // Messages actifs par événement
-db.event_messages.createIndex({ "metadata.replyTo": 1 })            // Réponses aux messages
-db.event_messages.createIndex({ "metadata.mentions": 1 })           // Messages avec mentions
-db.event_messages.createIndex({ "createdAt": -1 })                  // Tri chronologique global
 
 // Collection: notifications
 {
   _id: ObjectId,
   userId: Number,            // Destinataire (INT)
   type: String,              // 'event_invite', 'task_assigned', 'message', 'reminder'
-  title: String,
-  body: String,
-  data: {                    // Données contextuelles
-    eventId: Number,         // INT au lieu de String
-    taskId: Number,          // INT au lieu de String
-    senderId: Number,        // INT au lieu de String
-    actionUrl: String
-  },
-  status: String,            // 'pending', 'sent', 'delivered', 'read'
-  channels: [String],        // 'push', 'email', 'in_app'
-  scheduledFor: Date,        // Pour notifications programmées
-  sentAt: Date,
-  readAt: Date,
-  createdAt: Date,
-  updatedAt: Date
+  message: String,           // Contenu de la notification
+  read: Boolean,             // Statut de lecture
+  timestamp: Date            // Horodatage
 }
-
-// Index pour notifications
-db.notifications.createIndex({ "userId": 1, "status": 1 })
-db.notifications.createIndex({ "scheduledFor": 1 })
-db.notifications.createIndex({ "createdAt": -1 })
 
 // Collection: activity_logs (Audit trail)
 {
   _id: ObjectId,
   userId: Number,            // INT au lieu de String
   action: String,            // 'create', 'update', 'delete', 'login'
-  resource: String,          // 'event', 'task', 'expense', 'user'
-  resourceId: Number,        // INT au lieu de String
-  changes: {                 // Détails des modifications
-    before: Object,
-    after: Object
-  },
-  metadata: {
-    ip: String,
-    userAgent: String,
-    location: String
-  },
-  timestamp: Date
+  timestamp: Date            // Horodatage
 }
 
-// Index pour logs
-db.activity_logs.createIndex({ "userId": 1, "timestamp": -1 })
-db.activity_logs.createIndex({ "action": 1, "resource": 1 })
-db.activity_logs.createIndex({ "timestamp": -1 })
-
-// Collection: file_uploads (Métadonnées temporaires)
+// Collection: file_uploads (Métadonnées fichiers)
 {
   _id: ObjectId,
-  uploadId: String,          // ID unique de l'upload
-  userId: Number,            // INT au lieu de String
-  eventId: Number,           // INT au lieu de String
-  filename: String,
-  mimeType: String,
-  size: Number,
-  chunks: [{                 // Pour upload en chunks
-    chunkNumber: Number,
-    chunkSize: Number,
-    uploaded: Boolean
-  }],
-  status: String,            // 'uploading', 'completed', 'failed'
-  s3Key: String,
-  progress: Number,          // Pourcentage
-  error: String,
-  createdAt: Date,
-  completedAt: Date,
-  expiresAt: Date            // TTL pour nettoyage automatique
+  fileId: String,            // ID unique du fichier
+  path: String,              // Chemin dans le volume Docker
+  metadata: Object           // Métadonnées du fichier
 }
-
-// TTL Index pour nettoyage automatique
-db.file_uploads.createIndex({ "expiresAt": 1 }, { expireAfterSeconds: 0 })
 ```
 
 ### 5.4 Configuration Redis
@@ -533,61 +337,50 @@ const TTL = {
 };
 ```
 
-### 5.5 API REST Endpoints
+### 5.5 API REST Endpoints (Alignés avec API_RECAP.md)
 
 ```typescript
-// Routes principales
-POST   /api/auth/register          // Inscription
-POST   /api/auth/login             // Connexion
-POST   /api/auth/logout            // Déconnexion
-POST   /api/auth/refresh           // Renouveler JWT
-POST   /api/auth/forgot-password   // Mot de passe oublié
-POST   /api/auth/reset-password    // Réinitialiser mot de passe
+// 🔑 Authentification & Utilisateurs
+POST   /api/auth/register          // Inscription (username, email, password, fname, lname)
+POST   /api/auth/login             // Connexion (email + password)
+POST   /api/auth/confirm           // Confirmation compte (confirmation_code)
+POST   /api/auth/reset-password/request  // Demande reset (génère reset_token)
+POST   /api/auth/reset-password/confirm  // Confirmation reset (reset_token + nouveau password)
+GET    /api/users/me               // Profil utilisateur connecté
+PATCH  /api/users/me               // Mise à jour profil (fname, lname, username, email)
 
-GET    /api/users/profile          // Profil utilisateur
-PUT    /api/users/profile          // Modifier profil
-POST   /api/users/avatar           // Upload avatar
-DELETE /api/users/account          // Supprimer compte
+// 📅 Gestion des Événements
+POST   /api/events                 // Créer un événement
+GET    /api/events                 // Liste des événements de l'utilisateur
+GET    /api/events/:id             // Détail d'un événement
+PATCH  /api/events/:id             // Modifier un événement
+DELETE /api/events/:id             // Supprimer un événement
 
-GET    /api/events                 // Liste événements
-POST   /api/events                 // Créer événement
-GET    /api/events/:id             // Détails événement
-PUT    /api/events/:id             // Modifier événement
-DELETE /api/events/:id             // Supprimer événement
+// 👥 Participants
+POST   /api/events/:id/participants // Inviter un utilisateur
+PATCH  /api/events/:id/participants/:pid // Changer rôle
+DELETE /api/events/:id/participants/:pid // Retirer un participant
 
-POST   /api/events/:id/participants // Inviter participants
-PUT    /api/events/:id/participants/:userId // Modifier statut participation
-DELETE /api/events/:id/participants/:userId // Retirer participant
+// ✅ Tâches (Tasks)
+POST   /api/events/:id/tasks       // Créer une tâche
+GET    /api/events/:id/tasks       // Liste des tâches
+PATCH  /api/events/:id/tasks/:tid  // Modifier (titre, description, status, validated_by)
+DELETE /api/events/:id/tasks/:tid  // Supprimer
 
-GET    /api/events/:id/tasks       // Liste tâches
-POST   /api/events/:id/tasks       // Créer tâche
-PUT    /api/events/:id/tasks/:taskId // Modifier tâche
-DELETE /api/events/:id/tasks/:taskId // Supprimer tâche
+// 💰 Dépenses (Expenses)
+POST   /api/events/:id/expenses    // Ajouter une dépense
+GET    /api/events/:id/expenses    // Liste des dépenses
+PATCH  /api/events/:id/expenses/:eid // Modifier une dépense
+DELETE /api/events/:id/expenses/:eid // Supprimer
 
-GET    /api/events/:id/expenses    // Liste dépenses événement
-POST   /api/events/:id/expenses    // Ajouter dépense
-PUT    /api/events/:id/expenses/:expenseId // Modifier dépense
-DELETE /api/events/:id/expenses/:expenseId // Supprimer dépense
+// 💬 Chat & Collaboration (MongoDB)
+WS     /api/events/:id/messages    // Envoi/réception temps réel
+GET    /api/events/:id/messages    // Récupérer historique
 
-GET    /api/events/:id/media       // Liste médias (MongoDB)
-POST   /api/events/:id/media       // Upload média (MongoDB + S3)
-PUT    /api/media/:id              // Modifier métadonnées (MongoDB)
-DELETE /api/media/:id              // Supprimer média (MongoDB soft delete)
-POST   /api/media/:id/like         // Ajouter/retirer like (MongoDB)
-POST   /api/media/:id/comment      // Ajouter commentaire (MongoDB)
-GET    /api/events/:id/albums      // Liste albums (MongoDB)
-POST   /api/events/:id/albums      // Créer album (MongoDB)
-
-GET    /api/events/:id/messages    // Historique chat (MongoDB)
-POST   /api/events/:id/messages    // Nouveau message (MongoDB + WebSocket)  
-PUT    /api/messages/:id           // Modifier message (MongoDB)
-DELETE /api/messages/:id           // Supprimer message (MongoDB)
-POST   /api/messages/:id/react     // Ajouter réaction (MongoDB)
-PUT    /api/messages/:id/read      // Marquer comme lu (MongoDB)
-
-GET    /api/notifications          // Liste notifications
-PUT    /api/notifications/:id/read // Marquer comme lu
-POST   /api/notifications/device   // Enregistrer token device
+// 🖼️ Médias (Volume Docker)
+POST   /api/media/upload           // Upload fichier (multipart)
+GET    /api/media/:id              // Récupérer un fichier
+DELETE /api/media/:id              // Supprimer un fichier
 ```
 
 ### 5.6 WebSocket Events (Socket.io) - Chat MongoDB
@@ -601,25 +394,13 @@ namespace '/events/:eventId' {
   
   // Chat temps réel (MongoDB)
   'new_message'    // Nouveau message → MongoDB event_messages
-  'message_edited' // Message modifié → MongoDB update
-  'message_deleted' // Message supprimé → MongoDB soft delete
-  'message_reaction' // Réaction ajoutée → MongoDB reactions array
   'typing_start'   // Utilisateur tape (Redis cache)
   'typing_stop'    // Utilisateur arrête de taper (Redis)
-  'message_read'   // Message lu → MongoDB readBy array
-  'messages_bulk_read' // Marquer plusieurs messages lus
   
   // Données temps réel synchronisées MySQL ↔ MongoDB
   'participant_joined'  // Nouveau participant (MySQL) → notification (MongoDB)
-  'participant_left'    // Participant parti (MySQL) → message système (MongoDB)  
   'task_updated'        // Tâche modifiée (MySQL) → message système (MongoDB)
-  'budget_updated'      // Budget modifié (MySQL) → message système (MongoDB)
-  'event_updated'       // Événement modifié (MySQL) → message système (MongoDB)
-  
-  // Statut utilisateurs (Redis cache)
-  'user_online'    // Utilisateur en ligne
-  'user_offline'   // Utilisateur hors ligne
-  'users_online'   // Liste utilisateurs en ligne
+  'expense_updated'     // Dépense modifiée (MySQL) → message système (MongoDB)
 }
 ```
 
@@ -975,17 +756,33 @@ Iven/
 - **Total :** 18 semaines (~360 J/H)  
 - **Ressource :** 1 développeur full‑stack (étudiant)  
 
+### 🚀 Priorités de Dev (alignées avec API_RECAP.md)
+1. **Auth complet** avec confirmation + reset password  
+2. **Events CRUD** (MySQL)  
+3. **Participants** (liens entre users & events)  
+4. **Tasks** avec validation (`validated_by`)  
+5. **Expenses** avec gestion des paiements  
+6. **Chat MongoDB + WS**  
+7. **Upload médias via Docker volume**
+
 ## 10. Sécurité et Confidentialité
 
 - **RGPD :** droit d’accès, portabilité, suppression  
 - **Sauvegardes :** journalières MySQL, continues MongoDB  
 - **Chiffrement :** TLS, bcrypt  
 - **Audits & Pentests :** réguliers  
-- **RBAC :** configuré dans Kubernetes et services  
+- **RBAC :** 
+  - Owner → full access  
+  - Participant → accès limité (lecture, chat, tâches assignées)
+- **Rate limiting** sur login/register (Redis)
+- **Validation** avec Zod sur inputs  
 
 ## 11. Annexes
 
 - Glossaire  
 - Diagrammes ERD, séquence upload média  
 - Maquettes Figma, docs API  
+- **Fichiers de référence :**
+  - `init.sql` : Structure base de données MySQL
+  - `API_RECAP.md` : Endpoints API et priorités de développement
 - Contact : développeur étudiant  
