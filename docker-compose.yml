@@ -12,10 +12,10 @@ services:
       - NODE_ENV=production
       - PORT=3000
       # Variables de base de données
-      - DB_HOST=${DB_HOST}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME} 
+      - DB_HOST=${DB_HOST_PROD}
+      - DB_USER=${DB_USER_PROD}
+      - DB_PASSWORD=${DB_PASSWORD_PROD}
+      - DB_NAME=${DB_NAME_PROD} 
       # Variables JWT et autres
       - JWT_SECRET=${JWT_SECRET}
       - MONGO_URI=${MONGO_URI}
