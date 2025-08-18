@@ -1,15 +1,11 @@
 const mysql = require('mysql2');
 require('dotenv').config();
-const db_host = process.env.DB_HOST_PROD;
-const db_user = process.env.DB_USER_PROD;
-const db_password = process.env.DB_PASSWORD_PROD;
-const db_name = process.env.DB_NAME_PROD;
 
 const pool = mysql.createPool({
-  host: db_host,
-  user: db_user,
-  password: db_password,  //Activer sur macos en dev
-  database: db_name,
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,  //Activer sur macos en dev
+  database: process.env.DB_NAME,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0

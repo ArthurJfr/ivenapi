@@ -1,9 +1,3 @@
-#!/bin/bash
-
-# Copie du fichier .env.example vers .env
-echo "Copie du fichier .env.example vers .env"
-cp .env.example .env
-
 #!/usr/bin/env bash
 set -euo pipefail
 
