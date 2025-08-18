@@ -1,10 +1,9 @@
 const mysql = require('mysql2');
 require('dotenv').config();
-
-const db_host = process.env.DEV ? process.env.DB_HOST_DEV : process.env.DB_HOST_PROD;
-const db_user = process.env.DEV ? process.env.DB_USER_DEV : process.env.DB_USER_PROD;
-const db_password = process.env.DEV ? process.env.DB_PASSWORD_DEV : process.env.DB_PASSWORD_PROD;
-const db_name = process.env.DEV ? process.env.DB_NAME_DEV : process.env.DB_NAME_PROD;
+const db_host = process.env.DB_HOST;
+const db_user = process.env.DB_USER;
+const db_password = process.env.DB_PASSWORD;
+const db_name = process.env.DB_NAME;
 
 const pool = mysql.createPool({
   host: db_host,
