@@ -2,8 +2,8 @@ const db = require('../config/db');
 
 class Event {
     static async create(eventData) {
-        const { title, description, date, location, owner_id } = eventData;
-        const [result] = await db.query('INSERT INTO events (title, description, date, location, owner_id) VALUES (?, ?, ?, ?, ?)', [title, description, date, location, owner_id]);
+        const { title, description, start_date, end_date, location, owner_id } = eventData;
+        const [result] = await db.query('INSERT INTO events (title, description, start_date, end_date, location, owner_id) VALUES (?, ?, ?, ?, ?, ?)', [title, description, start_date, end_date, location, owner_id]);
         return result.insertId;
     }
     static async findById(id) {
