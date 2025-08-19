@@ -6,7 +6,7 @@ class Event {
         const [result] = await db.query('INSERT INTO events (title, description, start_date, end_date, location, owner_id) VALUES (?, ?, ?, ?, ?, ?)', [title, description, start_date, end_date, location, owner_id]);
         
         // Ajouter le propriétaire comme participant
-        await db.query('INSERT INTO event_participants (event_id, user_id) VALUES (?, ?)', [result.insertId, owner_id]);
+        await db.query('INSERT INTO event_participants (event_id, user_id, role) VALUES (?, ?, ?)', [result.insertId, owner_id, 'owner']);
         
         return result.insertId;
     }

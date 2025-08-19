@@ -19,7 +19,8 @@ class EventController {
         } catch (error) {
             res.status(500).json({ error: error.message });
         }
-};
+    }
+
     static async getEventsByOwnerId(req, res) {
         try {
             const { ownerId } = req.params;
@@ -28,7 +29,8 @@ class EventController {
         } catch (error) {
             res.status(500).json({ error: error.message });
         }
-};
+    }
+
     static async getEventsByParticipantId(req, res) {
         try {
             const { participantId } = req.params;
@@ -37,8 +39,9 @@ class EventController {
         } catch (error) {
             res.status(500).json({ error: error.message });
         }
-};
+    }
 }
+
 module.exports = EventController;
 
 
