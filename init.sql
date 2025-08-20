@@ -46,7 +46,6 @@ CREATE TABLE IF NOT EXISTS event_tasks (
     title VARCHAR(255) NOT NULL,
     description TEXT,
     validated_by INT DEFAULT NULL,
-    status ENUM('pending', 'completed') NOT NULL DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
