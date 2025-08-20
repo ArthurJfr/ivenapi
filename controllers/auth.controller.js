@@ -205,6 +205,8 @@ const authController = {
         user: {
           id: user.id,
           username: user.username,
+          fname: user.fname,
+          lname: user.lname,
           email: user.email,
           active: user.active
         }
