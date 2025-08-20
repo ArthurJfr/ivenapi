@@ -258,8 +258,6 @@ const authController = {
         return res.status(401).json({ message: 'Token non fourni' });
       }
 
-
-
     //  await User.updateLastLogin(userId); 
 
       res.json({ message: 'Déconnexion réussie' });
@@ -267,6 +265,70 @@ const authController = {
     } catch (error) {
       logger.error('Erreur logout:', error);
       res.status(500).json({ message: 'Erreur lors de la déconnexion' });
+    }
+  },
+
+  async isConnected(req, res) {
+    try {
+      const token = req.headers.authorization?.split(' ')[1];
+      
+      if (!token) {
+        return res.status(201).json({
+          message: 'Aucun token fourni',
+          isConnected: false
+        });
+      }
+
+      try {
+        // Vérifier le token JWT
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        
+        // Récupérer les informations de l'utilisateur
+        const user = await User.findById(decoded.userId);
+        
+        if (!user) {
+          return res.status(201).json({
+            message: 'Utilisateur non trouvé',
+            isConnected: false
+          });
+        }
+
+        // Token valide et utilisateur trouvé
+        return res.status(200).json({
+          message: 'Utilisateur connecté',
+          isConnected: true,
+          user: {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            active: user.active,
+            fname: user.fname,
+            lname: user.lname
+          }
+        });
+
+      } catch (jwtError) {
+        // Token expiré ou invalide
+        if (jwtError.name === 'TokenExpiredError') {
+          return res.status(201).json({
+            message: 'Token expiré',
+            isConnected: false
+          });
+        }
+        
+        // Autre erreur JWT
+        return res.status(201).json({
+          message: 'Token invalide',
+          isConnected: false
+        });
+      }
+
+    } catch (error) {
+      logger.error('Erreur vérification connexion:', error);
+      return res.status(201).json({
+        message: 'Erreur lors de la vérification de la connexion',
+        isConnected: false
+      });
     }
   }
 };

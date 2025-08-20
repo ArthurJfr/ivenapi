@@ -117,6 +117,52 @@ Content-Type: application/json
 }
 ```
 
+### Vérifier la connexion (Token JWT)
+```
+GET /api/auth/is-connected
+Authorization: Bearer <token>
+```
+
+**Réponse token valide :**
+```json
+{
+  "message": "Utilisateur connecté",
+  "isConnected": true,
+  "user": {
+    "id": 123,
+    "username": "testuser",
+    "email": "testuser@example.com",
+    "active": 1,
+    "fname": "Prénom",
+    "lname": "Nom"
+  }
+}
+```
+
+**Réponse token expiré :**
+```json
+{
+  "message": "Token expiré",
+  "isConnected": false
+}
+```
+
+**Réponse token invalide :**
+```json
+{
+  "message": "Token invalide",
+  "isConnected": false
+}
+```
+
+**Réponse sans token :**
+```json
+{
+  "message": "Aucun token fourni",
+  "isConnected": false
+}
+```
+
 ### Forgot Password
 ```
 POST /api/auth/forgot-password
@@ -681,7 +727,22 @@ CREATE INDEX idx_users_confirmation_code ON users(confirmation_code, confirmatio
 1. **Inscription** : L'utilisateur s'inscrit → reçoit un code à 6 chiffres par email
 2. **Confirmation** : L'utilisateur saisit le code dans l'app → compte activé
 3. **Connexion** : L'utilisateur peut se connecter normalement
-4. **Renvoyer code** : Si le code expire, l'utilisateur peut en demander un nouveau
+4. **Vérification connexion** : À l'ouverture de l'app, vérifier si le token est encore valide
+5. **Renvoyer code** : Si le code expire, l'utilisateur peut en demander un nouveau
+
+### Gestion de la persistance de session
+
+La méthode `is-connected` permet de :
+- **Vérifier automatiquement** si l'utilisateur est toujours connecté lors de la réouverture de l'app
+- **Gérer les tokens expirés** en redirigeant vers la page de connexion
+- **Maintenir l'expérience utilisateur** en évitant de demander les identifiants à chaque fois
+- **Retourner les informations utilisateur** si la session est valide
+
+**Utilisation recommandée :**
+- Appeler cette méthode au démarrage de l'application
+- Stocker le token JWT localement (AsyncStorage/SecureStore)
+- Si `isConnected: false`, rediriger vers la page de connexion
+- Si `isConnected: true`, rediriger vers l'écran principal avec les données utilisateur
 
 ## 🔗 Routes API Résumé
 
@@ -689,6 +750,7 @@ CREATE INDEX idx_users_confirmation_code ON users(confirmation_code, confirmatio
 |---------|-------|-------------|------------------|
 | POST | `/api/auth/register` | Inscription utilisateur | Non |
 | POST | `/api/auth/login` | Connexion utilisateur | Non |
+| GET | `/api/auth/is-connected` | Vérifier statut connexion | Non (mais token requis) |
 | POST | `/api/auth/logout` | Déconnexion utilisateur | Oui |
 | POST | `/api/auth/forgot-password` | Mot de passe oublié | Non |
 | POST | `/api/auth/confirm` | Confirmation email | Non |

@@ -8,5 +8,6 @@ router.post('/logout', authController.logout);
 router.post('/forgot-password', authController.forgotPassword);
 router.post('/confirm', authController.confirmEmail);
 router.post('/resend-confirmation-email', authController.resendConfirmationEmail);
+router.get('/is-connected', authController.isConnected);
 
 module.exports = router;
