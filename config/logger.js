@@ -1,6 +1,5 @@
 const winston = require('winston');
-require('winston-daily-rotate-file');
-const path = require('path');
+const MongoTransport = require('../utils/mongoTransport');
 
 // Configuration des formats
 const logFormat = winston.format.combine(
@@ -10,35 +9,24 @@ const logFormat = winston.format.combine(
   winston.format.json()
 );
 
-// Transport pour les fichiers avec rotation
-const fileRotateTransport = new winston.transports.DailyRotateFile({
-  filename: path.join('logs', '%DATE%', 'app-%DATE%.log'),
-  datePattern: 'YYYY-MM-DD',
-  zippedArchive: true,
-  maxSize: '20m',
-  maxFiles: '14d',
-  createSymlink: true,
-  symlinkName: 'current.log'
+// Transport MongoDB personnalisé
+const mongoTransport = new MongoTransport({
+  level: 'info',
+  collection: 'logs'
 });
 
-// Transport pour les erreurs
-const errorRotateTransport = new winston.transports.DailyRotateFile({
-  filename: path.join('logs', '%DATE%', 'error-%DATE%.log'),
-  datePattern: 'YYYY-MM-DD',
-  zippedArchive: true,
-  maxSize: '20m',
-  maxFiles: '14d',
+// Transport pour les erreurs critiques (niveau error uniquement)
+const errorMongoTransport = new MongoTransport({
   level: 'error',
-  createSymlink: true,
-  symlinkName: 'error.log'
+  collection: 'error_logs'
 });
 
 // Création du logger
 const logger = winston.createLogger({
   format: logFormat,
   transports: [
-    fileRotateTransport,
-    errorRotateTransport,
+    mongoTransport,
+    errorMongoTransport,
     new winston.transports.Console({
       format: winston.format.combine(
         winston.format.colorize(),
@@ -47,5 +35,44 @@ const logger = winston.createLogger({
     })
   ]
 });
+
+// Fonction utilitaire pour logger avec contexte de requête
+logger.logWithContext = (level, message, req = null, meta = {}) => {
+  const logInfo = {
+    level,
+    message,
+    timestamp: new Date(),
+    meta,
+    source: 'application'
+  };
+
+  if (req) {
+    logInfo.req = req;
+  }
+
+  logger.log(logInfo);
+};
+
+// Fonction utilitaire pour logger les erreurs avec contexte
+logger.errorWithContext = (message, error, req = null, meta = {}) => {
+  const logInfo = {
+    level: 'error',
+    message,
+    timestamp: new Date(),
+    meta: {
+      ...meta,
+      errorMessage: error.message,
+      errorStack: error.stack
+    },
+    stack: error.stack,
+    source: 'application'
+  };
+
+  if (req) {
+    logInfo.req = req;
+  }
+
+  logger.log(logInfo);
+};
 
 module.exports = logger; 
