@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS events (
     start_date DATETIME NOT NULL,
     end_date DATETIME NOT NULL,
     location VARCHAR(255),
+   -- status ENUM('pending', 'confirmed', 'cancelled') NOT NULL DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );

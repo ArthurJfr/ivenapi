@@ -516,6 +516,7 @@ Authorization: Bearer <token>
 ### Créer une tâche
 ```
 POST /api/task/create
+Authorization: Bearer <token>
 Content-Type: application/json
 
 {
@@ -534,6 +535,62 @@ Content-Type: application/json
   "description": "Description de la tâche",
   "event_id": 1,
   "owner_id": 123
+}
+```
+
+### Mettre à jour une tâche
+```
+PUT /api/task/:id
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "title": "Nouveau titre de la tâche",
+  "description": "Nouvelle description de la tâche",
+  "status": "in_progress",
+  "priority": "high",
+  "due_date": "2024-01-20T18:00:00Z",
+  "assigned_to": 456
+}
+```
+
+**Champs modifiables :**
+- `title` : Titre de la tâche
+- `description` : Description de la tâche
+- `status` : Statut de la tâche
+- `priority` : Priorité de la tâche
+- `due_date` : Date d'échéance
+- `assigned_to` : Utilisateur assigné à la tâche
+
+**Réponse :**
+```json
+{
+  "message": "Tâche mise à jour avec succès",
+  "task": {
+    "id": 1,
+    "title": "Nouveau titre de la tâche",
+    "description": "Nouvelle description de la tâche",
+    "event_id": 1,
+    "owner_id": 123,
+    "status": "in_progress",
+    "priority": "high",
+    "due_date": "2024-01-20T18:00:00Z",
+    "assigned_to": 456,
+    "updated_at": "2024-01-15T16:30:00Z"
+  }
+}
+```
+
+**Erreurs possibles :**
+```json
+{
+  "error": "Tâche non trouvée"
+}
+```
+
+```json
+{
+  "error": "Accès non autorisé. Seul le propriétaire peut modifier cette tâche."
 }
 ```
 
@@ -607,7 +664,6 @@ GET /api/task/participant/:participantId
 ]
 ```
 
-## 🛠️ Base de données - Migration requise
 
 Pour utiliser le nouveau système de codes de confirmation, ajoutez ces colonnes à votre table `users` :
 
@@ -649,6 +705,7 @@ CREATE INDEX idx_users_confirmation_code ON users(confirmation_code, confirmatio
 | GET | `/api/health` | Health check public | Non |
 | GET | `/api/health/protected` | Health check protégé | Oui |
 | POST | `/api/task/create` | Créer tâche | Oui |
+| PUT | `/api/task/:id` | Mettre à jour tâche | Oui |
 | GET | `/api/task/:id` | Obtenir tâche | Non |
 | GET | `/api/task/event/:eventId` | Tâches par événement | Non |
 | GET | `/api/task/owner/:ownerId` | Tâches par propriétaire | Non |

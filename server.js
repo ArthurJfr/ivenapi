@@ -6,12 +6,12 @@ require("dotenv").config();
 const mongoose = require("mongoose");
 const db = require('./config/db'); // Import de la connexion MySQL
 const authRoutes = require('./routes/auth.route');
-const adminRoutes = require('./routes/admin.route');
 const healthRoutes = require('./routes/health.route');
 const logger = require('./config/logger');
 const loggerMiddleware = require('./middleware/logger.middleware');
 const { initializeUploadDirectories } = require('./config/init');
 const eventRoutes = require('./routes/event.route');
+const taskRoutes = require('./routes/task.route');
 // Test de la connexion MySQL
 const testMySQLConnection = async () => {
   try {
@@ -47,9 +47,8 @@ mongoose.connection.on("connected", () => {
 // Routes
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
-app.use('/api/admin', adminRoutes);
 app.use('/api/event', eventRoutes);
-//app.use('/api/articles', articleRoutes);
+app.use('/api/task', taskRoutes);
 
 
 // Ajoutez le middleware de logging
