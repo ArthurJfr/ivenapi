@@ -12,6 +12,7 @@ const loggerMiddleware = require('./middleware/logger.middleware');
 const { initializeUploadDirectories } = require('./config/init');
 const eventRoutes = require('./routes/event.route');
 const taskRoutes = require('./routes/task.route');
+const logRoutes = require('./routes/log.route');
 // Test de la connexion MySQL
 const testMySQLConnection = async () => {
   try {
@@ -49,6 +50,7 @@ app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/event', eventRoutes);
 app.use('/api/task', taskRoutes);
+app.use('/api/logs', logRoutes);
 
 
 // Ajoutez le middleware de logging
