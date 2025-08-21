@@ -35,6 +35,14 @@ class EventController {
         try {
             const { participantId } = req.params;
             const events = await Event.findByParticipantId(participantId);
+
+            for (const event of events) {
+                const participants = await Event.getParticipants(event.id);
+                event.participants = participants;
+
+                const tasks = await Event.getTasks(event.id);
+                event.tasks = tasks;
+            }
             res.json(events);
         } catch (error) {
             res.status(500).json({ error: error.message });

@@ -19,7 +19,13 @@ class Event {
         return result;
     }
     static async findByParticipantId(participantId) {
-        const [result] = await db.query('SELECT * FROM events WHERE owner_id = ? OR id IN (SELECT event_id FROM event_participants WHERE user_id = ?)', [participantId, participantId]);
+        const [result] = await db.query(`
+            SELECT DISTINCT e.* 
+            FROM events e
+            LEFT JOIN event_participants ep ON e.id = ep.event_id
+            WHERE e.owner_id = ? OR ep.user_id = ?
+            ORDER BY e.created_at DESC
+        `, [participantId, participantId]);
         return result;
     }
     static async findByTaskId(taskId) { 
@@ -116,7 +122,7 @@ class Event {
 
     static async addParticipant(eventId, userId, role = 'participant') {
         const [result] = await db.query(
-            'INSERT INTO event_participants (event_id, user_id, role, joined_at) VALUES (?, ?, ?, NOW())',
+            'INSERT INTO event_participants (event_id, user_id, role, created_at) VALUES (?, ?, ?, NOW())',
             [eventId, userId, role]
         );
         return result.insertId;
@@ -147,7 +153,7 @@ class Event {
             SELECT 
                 ep.user_id,
                 ep.role,
-                ep.joined_at,
+                ep.created_at,
                 u.username,
                 u.email,
                 u.fname,
@@ -155,7 +161,29 @@ class Event {
             FROM event_participants ep
             JOIN users u ON ep.user_id = u.id
             WHERE ep.event_id = ?
-            ORDER BY ep.joined_at ASC
+            ORDER BY ep.created_at ASC
+        `, [eventId]);
+        
+        return result;
+    }   
+    static async getTasks(eventId) {
+        const [result] = await db.query(`
+            SELECT 
+                et.id,
+                et.owner_id,
+                et.event_id,
+                et.title,
+                et.description,
+                et.validated_by,
+                et.created_at,
+                et.updated_at,
+                u.username as owner_username,
+                u.fname as owner_fname,
+                u.lname as owner_lname
+            FROM event_tasks et
+            LEFT JOIN users u ON et.owner_id = u.id
+            WHERE et.event_id = ?
+            ORDER BY et.created_at DESC
         `, [eventId]);
         
         return result;
