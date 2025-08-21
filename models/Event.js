@@ -155,7 +155,6 @@ class Event {
                 ep.role,
                 ep.created_at,
                 u.username,
-                u.email,
                 u.fname,
                 u.lname
             FROM event_participants ep

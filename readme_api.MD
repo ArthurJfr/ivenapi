@@ -383,22 +383,27 @@ GET /api/event/:eventId/participants
     {
       "user_id": 123,
       "role": "owner",
-      "joined_at": "2024-01-15T10:00:00Z",
+      "created_at": "2024-01-15T10:00:00.000Z",
       "username": "proprietaire",
-      "email": "proprio@example.com",
       "fname": "Prénom",
       "lname": "Nom"
     },
     {
       "user_id": 456,
       "role": "participant",
-      "joined_at": "2024-01-15T11:00:00Z",
+      "created_at": "2024-01-15T11:00:00.000Z",
       "username": "participant1",
-      "email": "participant1@example.com",
       "fname": "Prénom2",
       "lname": "Nom2"
     }
   ]
+}
+```
+
+**Erreurs possibles :**
+```json
+{
+  "error": "Événement non trouvé"
 }
 ```
 
@@ -449,16 +454,49 @@ GET /api/event/participant/:participantId
 ```json
 [
   {
-    "id": 1,
-    "title": "Événement 1",
-    "description": "Description 1",
-    "start_date": "2024-01-15T10:00:00Z",
-    "end_date": "2024-01-15T18:00:00Z",
-    "location": "Lieu 1",
-    "owner_id": 123
+    "id": 4,
+    "owner_id": 3,
+    "title": "Réunion équipe",
+    "description": "Réunion hebdomadaire",
+    "start_date": "2024-01-15T09:00:00.000Z",
+    "end_date": "2024-01-15T10:30:00.000Z",
+    "location": "Salle de réunion",
+    "created_at": "2025-08-21T16:06:05.000Z",
+    "updated_at": "2025-08-21T16:06:05.000Z",
+    "participants": [
+      {
+        "user_id": 3,
+        "role": "owner",
+        "created_at": "2025-08-21T16:06:05.000Z",
+        "username": "arthurjfr",
+        "fname": "Arthur",
+        "lname": "Jaffro "
+      }
+    ],
+    "tasks": [
+      {
+        "id": 2,
+        "owner_id": 3,
+        "event_id": 4,
+        "title": "acheter pain",
+        "description": "acheter pain avant bbq",
+        "validated_by": null,
+        "created_at": "2025-08-21T16:06:24.000Z",
+        "updated_at": "2025-08-21T16:06:24.000Z",
+        "owner_username": "arthurjfr",
+        "owner_fname": "Arthur",
+        "owner_lname": "Jaffro "
+      }
+    ]
   }
 ]
 ```
+
+**Description :**
+Cette route retourne tous les événements où l'utilisateur spécifié est participant (soit comme propriétaire, soit comme participant ajouté). Chaque événement inclut :
+- **Informations de base** : id, titre, description, dates, lieu, propriétaire
+- **Participants** : Liste complète des participants avec leurs rôles et informations
+- **Tâches** : Toutes les tâches associées à l'événement avec leurs détails
 
 ## ✅ Contrôleur de Santé (`/api/health`)
 
@@ -592,21 +630,13 @@ Content-Type: application/json
 
 {
   "title": "Nouveau titre de la tâche",
-  "description": "Nouvelle description de la tâche",
-  "status": "in_progress",
-  "priority": "high",
-  "due_date": "2024-01-20T18:00:00Z",
-  "assigned_to": 456
+  "description": "Nouvelle description de la tâche"
 }
 ```
 
 **Champs modifiables :**
 - `title` : Titre de la tâche
 - `description` : Description de la tâche
-- `status` : Statut de la tâche
-- `priority` : Priorité de la tâche
-- `due_date` : Date d'échéance
-- `assigned_to` : Utilisateur assigné à la tâche
 
 **Réponse :**
 ```json
@@ -618,11 +648,9 @@ Content-Type: application/json
     "description": "Nouvelle description de la tâche",
     "event_id": 1,
     "owner_id": 123,
-    "status": "in_progress",
-    "priority": "high",
-    "due_date": "2024-01-20T18:00:00Z",
-    "assigned_to": 456,
-    "updated_at": "2024-01-15T16:30:00Z"
+    "validated_by": null,
+    "created_at": "2024-01-15T10:00:00.000Z",
+    "updated_at": "2024-01-15T16:30:00.000Z"
   }
 }
 ```
@@ -705,7 +733,10 @@ GET /api/task/participant/:participantId
     "title": "Tâche 1",
     "description": "Description 1",
     "event_id": 1,
-    "owner_id": 123
+    "owner_id": 123,
+    "validated_by": null,
+    "created_at": "2024-01-15T10:00:00.000Z",
+    "updated_at": "2024-01-15T10:00:00.000Z"
   }
 ]
 ```
