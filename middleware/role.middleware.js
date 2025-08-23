@@ -1,0 +1,63 @@
+const User = require('../models/User');
+const logger = require('../config/logger');
+
+// Middleware pour vérifier si l'utilisateur a le rôle requis
+const requireRole = (requiredRole) => {
+  return async (req, res, next) => {
+    try {
+      // Récupérer l'ID utilisateur depuis le token JWT (déjà décodé par auth.middleware)
+      const userId = req.user?.userId;
+      
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Token d\'authentification requis'
+        });
+      }
+
+      // Récupérer le rôle de l'utilisateur
+      const userRole = await User.getUserRole(userId);
+      
+      if (!userRole) {
+        return res.status(403).json({
+          success: false,
+          message: 'Rôle utilisateur non trouvé'
+        });
+      }
+
+      // Vérifier les permissions selon la hiérarchie des rôles
+      const roleHierarchy = {
+        'user': 1,
+        'admin': 2,
+        'superadmin': 3
+      };
+
+      if (roleHierarchy[userRole] < roleHierarchy[requiredRole]) {
+        logger.warn('Tentative d\'accès non autorisé', {
+          userId,
+          userRole,
+          requiredRole,
+          endpoint: req.originalUrl
+        });
+
+        return res.status(403).json({
+          success: false,
+          message: `Accès refusé. Rôle requis: ${requiredRole}`
+        });
+      }
+
+      // Ajouter le rôle à la requête pour utilisation ultérieure
+      req.userRole = userRole;
+      next();
+
+    } catch (error) {
+      logger.error('Erreur lors de la vérification du rôle', { error: error.message });
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la vérification des permissions'
+      });
+    }
+  };
+};
+
+module.exports = { requireRole };

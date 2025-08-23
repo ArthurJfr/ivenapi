@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     password VARCHAR(255) NOT NULL,
     fname VARCHAR(255),
     lname VARCHAR(255),
+    role ENUM('user', 'admin', 'superadmin') DEFAULT 'user',
     active TINYINT(1) DEFAULT 0,
     confirmation_code VARCHAR(6) DEFAULT NULL,
     confirmation_code_expires DATETIME DEFAULT NULL,

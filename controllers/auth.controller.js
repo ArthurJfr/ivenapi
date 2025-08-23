@@ -23,12 +23,12 @@ const authController = {
       // Création de l'utilisateur
       const hashedPassword = await bcrypt.hash(password, 6);
 
-      // const defaultRole = process.env.DEFAULT_ROLE;
+      const defaultRole = 'user'; // Rôle par défaut
       const userId = await User.create({
         username,
         email,
         password: hashedPassword,
-        // role: defaultRole,
+        role: defaultRole,
         active: 0,
         fname: fname,
         lname: lname
@@ -108,6 +108,7 @@ const authController = {
           id: user.id,
           username: user.username,
           email: user.email,
+          role: user.role,
           active: user.active,
           fname: user.fname,
           lname: user.lname
@@ -301,6 +302,7 @@ const authController = {
             id: user.id,
             username: user.username,
             email: user.email,
+            role: user.role,
             active: user.active,
             fname: user.fname,
             lname: user.lname

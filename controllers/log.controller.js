@@ -226,14 +226,26 @@ const logController = {
     }
   },
 
-  // Nettoyer les anciens logs (admin seulement)
+  // Nettoyer les anciens logs (admin et superadmin seulement)
   async cleanOldLogs(req, res) {
     try {
       const { days = 30 } = req.query;
       
+      // Ajouter une vérification de sécurité supplémentaire
+      if (req.userRole === 'admin' && parseInt(days) < 7) {
+        return res.status(403).json({
+          success: false,
+          message: 'Les administrateurs ne peuvent pas supprimer les logs de moins de 7 jours'
+        });
+      }
+      
       const deletedCount = await LogManager.cleanOldLogs(parseInt(days));
       
-      logger.info('Anciens logs nettoyés avec succès', { days: parseInt(days), deletedCount });
+      logger.info('Anciens logs nettoyés avec succès', { 
+        days: parseInt(days), 
+        deletedCount,
+        userRole: req.userRole 
+      });
 
       res.json({
         success: true,
@@ -254,12 +266,23 @@ const logController = {
     }
   },
 
-  // Supprimer TOUS les logs (admin seulement)
+  // Supprimer TOUS les logs (superadmin seulement)
   async cleanAllLogs(req, res) {
     try {
+      // Vérification de sécurité supplémentaire
+      if (req.userRole !== 'superadmin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Accès refusé. Seuls les superadmins peuvent supprimer tous les logs'
+        });
+      }
+
       const deletedCount = await LogManager.cleanAllLogs();
       
-      logger.info('Tous les logs supprimés avec succès', { deletedCount });
+      logger.info('Tous les logs supprimés avec succès', { 
+        deletedCount,
+        userRole: req.userRole 
+      });
 
       res.json({
         success: true,

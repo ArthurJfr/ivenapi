@@ -2,11 +2,11 @@ const db = require('../config/db');
 class User {
   //#region INSERT
   static async create(userData) {
-    const { username, email, password, active, fname, lname } = userData;
+    const { username, email, password, active, fname, lname, role = 'user' } = userData;
     try {
       const [result] = await db.query(
-        'INSERT INTO users (username, email, password, active, fname, lname ) VALUES (?, ?, ?, ?, ?, ?)',
-        [username, email, password, active, fname, lname]
+        'INSERT INTO users (username, email, password, active, fname, lname, role) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [username, email, password, active, fname, lname, role]
       );
       return result.insertId;
     } catch (error) {
@@ -181,6 +181,19 @@ class User {
     }
   }
   //#endregion
+
+  // Nouvelle méthode pour vérifier le rôle
+  static async getUserRole(userId) {
+    try {
+      const [rows] = await db.query(
+        'SELECT role FROM users WHERE id = ?',
+        [userId]
+      );
+      return rows[0]?.role || null;
+    } catch (error) {
+      throw new Error('Erreur lors de la récupération du rôle utilisateur');
+    }
+  }
 }
 
 module.exports = User; 
