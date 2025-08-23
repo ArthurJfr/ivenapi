@@ -25,10 +25,13 @@ class User {
   }  
   static async findById(id) {
     try {
-      const [rows] = await db.query('SELECT id, username, email FROM users WHERE id = ?', [id]);
+      const [rows] = await db.query(
+        'SELECT id, username, email, role, active, fname, lname FROM users WHERE id = ?', 
+        [id]
+      );
       return rows[0];
     } catch (error) {
-      throw new Error('Erreur lors de la recherche de l\'utilisateur');
+      throw new Error('Erreur lors de la récupération de l\'utilisateur');
     }
   }
   static async findByUsernameOrEmail(identifiant) {

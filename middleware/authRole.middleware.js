@@ -29,8 +29,10 @@ const requireAuthAndRole = (requiredRole) => {
 
       // 3. Vérification du rôle
       const userRole = user.role;
+      console.log('🎭 Rôle utilisateur:', userRole, 'pour', user.username); // Debug
       
       if (!userRole) {
+        console.log('❌ Rôle manquant pour l\'utilisateur:', user); // Debug
         return res.status(403).json({
           success: false,
           message: 'Rôle utilisateur non trouvé'
