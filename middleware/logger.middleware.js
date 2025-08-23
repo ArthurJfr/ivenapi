@@ -3,25 +3,30 @@ const logger = require('../config/logger');
 const loggerMiddleware = (req, res, next) => {
   const start = Date.now();
   
-  // Log de la requête entrante
+  // Log plus détaillé de la requête
   logger.logWithContext('info', 'Requête entrante', req, {
     method: req.method,
     url: req.originalUrl || req.url,
     ip: req.ip,
-    userAgent: req.get('User-Agent')
+    userAgent: req.get('User-Agent'),
+    userId: req.user?.id, // Si vous avez l'utilisateur authentifié
+    body: req.body, // Corps de la requête (attention aux données sensibles)
+    query: req.query,
+    params: req.params
   });
 
-  // Intercepter la réponse pour logger les informations de fin
+  // Log de la réponse avec plus de contexte
   res.on('finish', () => {
     const duration = Date.now() - start;
+    const logLevel = res.statusCode >= 400 ? 'warn' : 'info';
     
-    // Log de la réponse
-    logger.logWithContext('info', 'Requête terminée', req, {
+    logger.logWithContext(logLevel, 'Requête terminée', req, {
       method: req.method,
       url: req.originalUrl || req.url,
       statusCode: res.statusCode,
       responseTime: duration,
-      contentLength: res.get('Content-Length') || 0
+      contentLength: res.get('Content-Length') || 0,
+      userId: req.user?.id
     });
   });
 

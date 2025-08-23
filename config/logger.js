@@ -21,18 +21,32 @@ const errorMongoTransport = new MongoTransport({
   collection: 'error_logs'
 });
 
-// Création du logger
+// Ajouter des transports pour différents niveaux
 const logger = winston.createLogger({
   format: logFormat,
   transports: [
+    // Logs d'info et plus dans MongoDB
     mongoTransport,
+    
+    // Erreurs critiques dans une collection séparée
     errorMongoTransport,
+    
+    // Console avec couleurs
     new winston.transports.Console({
+      level: process.env.NODE_ENV === 'production' ? 'warn' : 'debug',
       format: winston.format.combine(
         winston.format.colorize(),
         winston.format.simple()
       )
-    })
+    }),
+    
+    // Fichier pour les erreurs en production
+    ...(process.env.NODE_ENV === 'production' ? [
+      new winston.transports.File({ 
+        filename: 'logs/error.log', 
+        level: 'error' 
+      })
+    ] : [])
   ]
 });
 

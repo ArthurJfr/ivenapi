@@ -1,14 +1,15 @@
 const Log = require('../models/Log');
+const logger = require('../config/logger');
 
 class LogManager {
   // Nettoyer les anciens logs
   static async cleanOldLogs(daysToKeep = 30) {
     try {
       const deletedCount = await Log.cleanOldLogs(daysToKeep);
-      console.log(`🧹 ${deletedCount} anciens logs supprimés`);
+      logger.info(`🧹 ${deletedCount} anciens logs supprimés`);
       return deletedCount;
     } catch (error) {
-      console.error('❌ Erreur lors du nettoyage des logs:', error);
+      logger.error('❌ Erreur lors du nettoyage des logs:', error);
       throw error;
     }
   }
