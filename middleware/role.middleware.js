@@ -5,8 +5,8 @@ const logger = require('../config/logger');
 const requireRole = (requiredRole) => {
   return async (req, res, next) => {
     try {
-      // Récupérer l'ID utilisateur depuis le token JWT (déjà décodé par auth.middleware)
-      const userId = req.user?.userId;
+      // Récupérer l'ID utilisateur depuis req.user (déjà décodé par auth.middleware)
+      const userId = req.user?.id; // Changé de req.user?.userId à req.user?.id
       
       if (!userId) {
         return res.status(401).json({
