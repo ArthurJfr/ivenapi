@@ -24,7 +24,7 @@ class Task {
     }
 
     static async update(id, updateData) {
-        const { title, description, status, priority, due_date, assigned_to } = updateData;
+        const { title, description } = updateData;
         
         // Construire la requête de mise à jour dynamiquement
         const updateFields = [];
@@ -37,22 +37,6 @@ class Task {
         if (description !== undefined) {
             updateFields.push('description = ?');
             updateValues.push(description);
-        }
-        if (status !== undefined) {
-            updateFields.push('status = ?');
-            updateValues.push(status);
-        }
-        if (priority !== undefined) {
-            updateFields.push('priority = ?');
-            updateValues.push(priority);
-        }
-        if (due_date !== undefined) {
-            updateFields.push('due_date = ?');
-            updateValues.push(due_date);
-        }
-        if (assigned_to !== undefined) {
-            updateFields.push('assigned_to = ?');
-            updateValues.push(assigned_to);
         }
         
         if (updateFields.length === 0) {
@@ -70,7 +54,6 @@ class Task {
             throw new Error('Tâche non trouvée');
         }
         
-        // Retourner la tâche mise à jour
         return await Task.findById(id);
     }
 
