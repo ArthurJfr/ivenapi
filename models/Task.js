@@ -73,6 +73,71 @@ class Task {
         // Retourner la tâche mise à jour
         return await Task.findById(id);
     }
+
+    // Nouvelle méthode pour valider une tâche
+    static async validateTask(taskId, validatorId) {
+        try {
+            // Vérifier que la tâche existe
+            const task = await Task.findById(taskId);
+            if (!task) {
+                throw new Error('Tâche non trouvée');
+            }
+
+            // Mettre à jour la colonne validated_by
+            const [result] = await db.query(
+                'UPDATE event_tasks SET validated_by = ?, updated_at = NOW() WHERE id = ?',
+                [validatorId, taskId]
+            );
+
+            if (result.affectedRows === 0) {
+                throw new Error('Erreur lors de la validation de la tâche');
+            }
+
+            // Retourner la tâche mise à jour
+            return await Task.findById(taskId);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    // Méthode pour annuler la validation d'une tâche
+    static async unvalidateTask(taskId) {
+        try {
+            // Vérifier que la tâche existe
+            const task = await Task.findById(taskId);
+            if (!task) {
+                throw new Error('Tâche non trouvée');
+            }
+
+            // Supprimer la validation (mettre validated_by à NULL)
+            const [result] = await db.query(
+                'UPDATE event_tasks SET validated_by = NULL, updated_at = NOW() WHERE id = ?',
+                [taskId]
+            );
+
+            if (result.affectedRows === 0) {
+                throw new Error('Erreur lors de l\'annulation de la validation');
+            }
+
+            // Retourner la tâche mise à jour
+            return await Task.findById(taskId);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    // Méthode pour obtenir les tâches validées par un utilisateur
+    static async findValidatedByUser(userId) {
+        try {
+            const [result] = await db.query(
+                'SELECT * FROM event_tasks WHERE validated_by = ?',
+                [userId]
+            );
+            return result;
+        } catch (error) {
+            throw new Error('Erreur lors de la récupération des tâches validées');
+        }
+    }
 }
 
 module.exports = Task;

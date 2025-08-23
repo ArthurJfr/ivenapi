@@ -680,7 +680,10 @@ GET /api/task/:id
   "title": "Titre de la tâche",
   "description": "Description de la tâche",
   "event_id": 1,
-  "owner_id": 123
+  "owner_id": 123,
+  "validated_by": null,
+  "created_at": "2024-01-15T10:00:00.000Z",
+  "updated_at": "2024-01-15T10:00:00.000Z"
 }
 ```
 
@@ -697,7 +700,10 @@ GET /api/task/event/:eventId
     "title": "Tâche 1",
     "description": "Description 1",
     "event_id": 1,
-    "owner_id": 123
+    "owner_id": 123,
+    "validated_by": null,
+    "created_at": "2024-01-15T10:00:00.000Z",
+    "updated_at": "2024-01-15T10:00:00.000Z"
   }
 ]
 ```
@@ -715,7 +721,10 @@ GET /api/task/owner/:ownerId
     "title": "Tâche 1",
     "description": "Description 1",
     "event_id": 1,
-    "owner_id": 123
+    "owner_id": 123,
+    "validated_by": null,
+    "created_at": "2024-01-15T10:00:00.000Z",
+    "updated_at": "2024-01-15T10:00:00.000Z"
   }
 ]
 ```
@@ -740,6 +749,146 @@ GET /api/task/participant/:participantId
   }
 ]
 ```
+
+### 🆕 **Valider une tâche**
+```
+POST /api/task/:id/validate
+Authorization: Bearer <token>
+```
+
+**Description :** Permet à un utilisateur de valider une tâche créée par un autre utilisateur.
+
+**Règles de validation :**
+- Seuls les utilisateurs connectés peuvent valider des tâches
+- Un propriétaire ne peut pas valider sa propre tâche
+- Une tâche ne peut être validée qu'une seule fois
+
+**Réponse succès :**
+```json
+{
+  "success": true,
+  "message": "Tâche validée avec succès",
+  "task": {
+    "id": 1,
+    "title": "Tâche validée",
+    "description": "Description de la tâche",
+    "event_id": 1,
+    "owner_id": 123,
+    "validated_by": 456,
+    "created_at": "2024-01-15T10:00:00.000Z",
+    "updated_at": "2024-01-15T16:30:00.000Z"
+  }
+}
+```
+
+**Erreurs possibles :**
+```json
+{
+  "success": false,
+  "error": "Tâche non trouvée"
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Vous ne pouvez pas valider votre propre tâche"
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Cette tâche est déjà validée"
+}
+```
+
+### 🆕 **Annuler la validation d'une tâche**
+```
+DELETE /api/task/:id/validate
+Authorization: Bearer <token>
+```
+
+**Description :** Permet au validateur d'annuler sa validation d'une tâche.
+
+**Règles :**
+- Seul le validateur peut annuler sa validation
+- Nécessite une authentification
+
+**Réponse succès :**
+```json
+{
+  "success": true,
+  "message": "Validation de la tâche annulée",
+  "task": {
+    "id": 1,
+    "title": "Tâche",
+    "description": "Description de la tâche",
+    "event_id": 1,
+    "owner_id": 123,
+    "validated_by": null,
+    "created_at": "2024-01-15T10:00:00.000Z",
+    "updated_at": "2024-01-15T16:30:00.000Z"
+  }
+}
+```
+
+**Erreurs possibles :**
+```json
+{
+  "success": false,
+  "error": "Tâche non trouvée"
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Seul le validateur peut annuler sa validation"
+}
+```
+
+### 🆕 **Obtenir les tâches validées par un utilisateur**
+```
+GET /api/task/validated-by/:userId
+```
+
+**Description :** Récupère toutes les tâches validées par un utilisateur spécifique.
+
+**Réponse :**
+```json
+{
+  "success": true,
+  "data": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Tâche validée 1",
+        "description": "Description 1",
+        "event_id": 1,
+        "owner_id": 123,
+        "validated_by": 456,
+        "created_at": "2024-01-15T10:00:00.000Z",
+        "updated_at": "2024-01-15T16:30:00.000Z"
+      },
+      {
+        "id": 2,
+        "title": "Tâche validée 2",
+        "description": "Description 2",
+        "event_id": 2,
+        "owner_id": 789,
+        "validated_by": 456,
+        "created_at": "2024-01-15T11:00:00.000Z",
+        "updated_at": "2024-01-15T17:00:00.000Z"
+      }
+    ],
+    "count": 2
+  },
+  "message": "2 tâches validées trouvées"
+}
+```
+
+---
 
 ## 📊 Contrôleur de Logs (`/api/log`)
 
@@ -1004,9 +1153,72 @@ La méthode `is-connected` permet de :
 | GET | `/api/task/event/:eventId` | Tâches par événement | Non |
 | GET | `/api/task/owner/:ownerId` | Tâches par propriétaire | Non |
 | GET | `/api/task/participant/:participantId` | Tâches par participant | Non |
+| 🆕 **POST** | **`/api/task/:id/validate`** | **Valider une tâche** | **Oui** | **User+** |
+| 🆕 **DELETE** | **`/api/task/:id/validate`** | **Annuler validation** | **Oui** | **User+** |
+| 🆕 **GET** | **`/api/task/validated-by/:userId`** | **Tâches validées par un utilisateur** | **Non** | **-** |
 | GET | `/api/log/recent` | Logs récents avec filtres | Non |
 | GET | `/api/log/stats` | Statistiques des logs | Non |
 | GET | `/api/log/errors` | Logs d'erreur | Non |
 | GET | `/api/log/user/:userId` | Logs par utilisateur | Non |
 | DELETE | `/api/log/clean` | Nettoyer anciens logs | Oui |
+| DELETE | `/api/log/clean-all` | Supprimer tous les logs | Oui | Superadmin |
+
+---
+
+## 🎯 **Système de validation des tâches**
+
+### **Principe de fonctionnement**
+Le système de validation permet aux participants d'un événement de confirmer que les tâches créées par d'autres participants ont été accomplies.
+
+### **Workflow de validation**
+1. **Création** : Un participant crée une tâche pour un événement
+2. **Exécution** : La tâche est accomplie par le créateur ou un autre participant
+3. **Validation** : Un autre participant valide la tâche accomplie
+4. **Suivi** : La tâche apparaît comme "validée" dans le système
+
+### **Règles métier**
+- ✅ **Validation possible** : Par tout participant connecté (sauf le créateur)
+- ❌ **Auto-validation** : Impossible de valider sa propre tâche
+- 🔄 **Validation unique** : Une tâche ne peut être validée qu'une seule fois
+- 🗑️ **Annulation** : Seul le validateur peut annuler sa validation
+- 📊 **Traçabilité** : Historique complet des validations conservé
+
+### **Cas d'usage typiques**
+- **Événements collaboratifs** : Validation mutuelle des tâches
+- **Gestion de projet** : Suivi des accomplissements
+- **Équipes** : Contrôle qualité des réalisations
+- **Événements familiaux** : Confirmation des tâches accomplies
+
+---
+
+## 🔒 **Sécurité et permissions**
+
+### **Authentification requise**
+- **Création** : Token JWT requis
+- **Modification** : Token JWT + propriétaire uniquement
+- **Validation** : Token JWT + participant de l'événement
+- **Annulation** : Token JWT + validateur uniquement
+
+### **Vérifications de sécurité**
+- Vérification de l'existence de la tâche
+- Vérification des droits de propriété
+- Vérification du statut de validation
+- Protection contre les validations multiples
+
+---
+
+*Dernière mise à jour : Janvier 2025 - Ajout du système de validation des tâches*
+
+## 📋 **Résumé des nouvelles fonctionnalités ajoutées**
+
+✅ **Validation des tâches** : `POST /api/task/:id/validate`
+✅ **Annulation de validation** : `DELETE /api/task/:id/validate`
+✅ **Consultation des validations** : `GET /api/task/validated-by/:userId`
+✅ **Documentation complète** : Exemples de requêtes et réponses
+✅ **Gestion des erreurs** : Tous les cas d'erreur documentés
+✅ **Règles métier** : Explication du système de validation
+✅ **Tableau des routes** : Mise à jour avec les nouvelles routes
+✅ **Sécurité** : Explication des permissions et vérifications
+
+Votre README est maintenant complet avec toutes les nouvelles fonctionnalités de validation des tâches ! 🚀
 

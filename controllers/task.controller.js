@@ -78,6 +78,115 @@ class TaskController {
             res.status(500).json({ error: error.message });
         }
     }
+
+    // Nouvelle méthode pour valider une tâche
+    static async validateTask(req, res) {
+        try {
+            const { id } = req.params;
+            const validatorId = req.user.id; // ID de l'utilisateur connecté
+
+            // Vérifier que la tâche existe
+            const existingTask = await Task.findById(id);
+            if (!existingTask) {
+                return res.status(404).json({ 
+                    success: false,
+                    error: 'Tâche non trouvée' 
+                });
+            }
+
+            // Vérifier que l'utilisateur n'est pas le propriétaire de la tâche
+            // (un propriétaire ne peut pas valider sa propre tâche)
+            if (existingTask.owner_id === validatorId) {
+                return res.status(403).json({ 
+                    success: false,
+                    error: 'Vous ne pouvez pas valider votre propre tâche' 
+                });
+            }
+
+            // Vérifier que la tâche n'est pas déjà validée
+            if (existingTask.validated_by) {
+                return res.status(400).json({ 
+                    success: false,
+                    error: 'Cette tâche est déjà validée' 
+                });
+            }
+
+            // Valider la tâche
+            const validatedTask = await Task.validateTask(id, validatorId);
+            
+            res.json({
+                success: true,
+                message: 'Tâche validée avec succès',
+                task: validatedTask
+            });
+        } catch (error) {
+            res.status(500).json({ 
+                success: false,
+                error: error.message 
+            });
+        }
+    }
+
+    // Méthode pour annuler la validation d'une tâche
+    static async unvalidateTask(req, res) {
+        try {
+            const { id } = req.params;
+            const userId = req.user.id;
+
+            // Vérifier que la tâche existe
+            const existingTask = await Task.findById(id);
+            if (!existingTask) {
+                return res.status(404).json({ 
+                    success: false,
+                    error: 'Tâche non trouvée' 
+                });
+            }
+
+            // Vérifier que l'utilisateur est celui qui a validé la tâche
+            if (existingTask.validated_by !== userId) {
+                return res.status(403).json({ 
+                    success: false,
+                    error: 'Seul le validateur peut annuler sa validation' 
+                });
+            }
+
+            // Annuler la validation
+            const unvalidatedTask = await Task.unvalidateTask(id);
+            
+            res.json({
+                success: true,
+                message: 'Validation de la tâche annulée',
+                task: unvalidatedTask
+            });
+        } catch (error) {
+            res.status(500).json({ 
+                success: false,
+                error: error.message 
+            });
+        }
+    }
+
+    // Méthode pour obtenir les tâches validées par un utilisateur
+    static async getTasksValidatedByUser(req, res) {
+        try {
+            const { userId } = req.params;
+            const tasks = await Task.findValidatedByUser(userId);
+            
+            res.json({
+                success: true,
+                data: {
+                    tasks,
+                    count: tasks.length
+                },
+                message: `${tasks.length} tâches validées trouvées`
+            });
+        } catch (error) {
+            res.status(500).json({ 
+                success: false,
+                error: error.message 
+            });
+        }
+    }
 }
 
 module.exports = TaskController;
