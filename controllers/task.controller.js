@@ -96,12 +96,12 @@ class TaskController {
 
             // Vérifier que l'utilisateur n'est pas le propriétaire de la tâche
             // (un propriétaire ne peut pas valider sa propre tâche)
-            if (existingTask.owner_id === validatorId) {
-                return res.status(403).json({ 
-                    success: false,
-                    error: 'Vous ne pouvez pas valider votre propre tâche' 
-                });
-            }
+            // if (existingTask.owner_id === validatorId) {
+            //     return res.status(403).json({ 
+            //         success: false,
+            //         error: 'Vous ne pouvez pas valider votre propre tâche' 
+            //     });
+            // }
 
             // Vérifier que la tâche n'est pas déjà validée
             if (existingTask.validated_by) {
