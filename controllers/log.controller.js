@@ -252,6 +252,31 @@ const logController = {
         error: error.message
       });
     }
+  },
+
+  // Supprimer TOUS les logs (admin seulement)
+  async cleanAllLogs(req, res) {
+    try {
+      const deletedCount = await LogManager.cleanAllLogs();
+      
+      logger.info('Tous les logs supprimés avec succès', { deletedCount });
+
+      res.json({
+        success: true,
+        data: {
+          deletedCount
+        },
+        message: `${deletedCount} logs supprimés de la base de données`
+      });
+
+    } catch (error) {
+      logger.error('Erreur lors de la suppression de tous les logs', { error: error.message });
+      res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la suppression de tous les logs',
+        error: error.message
+      });
+    }
   }
 };
 

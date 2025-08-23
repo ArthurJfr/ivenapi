@@ -17,4 +17,7 @@ router.get('/user/:userId', logController.getUserLogs);
 // Route pour nettoyer les anciens logs (admin)
 router.delete('/clean', logController.cleanOldLogs);
 
+// Route pour supprimer TOUS les logs (admin)
+router.delete('/clean-all', logController.cleanAllLogs);
+
 module.exports = router;

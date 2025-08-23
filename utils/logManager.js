@@ -13,6 +13,18 @@ class LogManager {
     }
   }
 
+  // Supprimer TOUS les logs
+  static async cleanAllLogs() {
+    try {
+      const deletedCount = await Log.deleteMany({});
+      console.log(`🗑️ ${deletedCount} logs supprimés de la base de données`);
+      return deletedCount;
+    } catch (error) {
+      console.error('❌ Erreur lors de la suppression de tous les logs:', error);
+      throw error;
+    }
+  }
+
   // Obtenir les statistiques des logs
   static async getLogStats(days = 7) {
     try {
