@@ -332,7 +332,18 @@ const authController = {
         isConnected: false
       });
     }
+  },
+  async getUserById(req, res) {
+    try {
+      const user = await User.getUserById(req.params.id);
+      res.json(user);
+    } catch (error) {
+      logger.error('Erreur récupération utilisateur:', error);
+      res.status(500).json({ message: 'Erreur lors de la récupération de l\'utilisateur' });
+    }
   }
 };
+
+
 
 module.exports = authController;
