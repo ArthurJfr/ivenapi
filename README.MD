@@ -163,6 +163,31 @@ Authorization: Bearer <token>
 }
 ```
 
+### Obtenir un utilisateur par ID
+```
+GET /api/auth/user/:id
+```
+
+**Réponse :**
+```json
+{
+  "id": 123,
+  "username": "testuser",
+  "email": "testuser@example.com",
+  "role": "user",
+  "active": 1,
+  "fname": "Prénom",
+  "lname": "Nom"
+}
+```
+
+**Erreurs possibles :**
+```json
+{
+  "message": "Erreur lors de la récupération de l'utilisateur"
+}
+```
+
 ### Forgot Password
 ```
 POST /api/auth/forgot-password
@@ -1132,6 +1157,7 @@ La méthode `is-connected` permet de :
 | POST | `/api/auth/register` | Inscription utilisateur | Non |
 | POST | `/api/auth/login` | Connexion utilisateur | Non |
 | GET | `/api/auth/is-connected` | Vérifier statut connexion | Non (mais token requis) |
+| GET | `/api/auth/user/:id` | Obtenir utilisateur par ID | Non |
 | POST | `/api/auth/logout` | Déconnexion utilisateur | Oui |
 | POST | `/api/auth/forgot-password` | Mot de passe oublié | Non |
 | POST | `/api/auth/confirm` | Confirmation email | Non |
