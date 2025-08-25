@@ -187,6 +187,119 @@ class Event {
         
         return result;
     }
+
+    // Méthodes de gestion des invitations
+    static async createInvitation(eventId, invitedUserId, invitedBy, message = null, expiresInDays = 7) {
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + expiresInDays);
+        
+        const [result] = await db.query(
+            'INSERT INTO event_invitations (event_id, invited_user_id, invited_by, message, expires_at) VALUES (?, ?, ?, ?, ?)',
+            [eventId, invitedUserId, invitedBy, message, expiresAt]
+        );
+        return result.insertId;
+    }
+
+    static async getInvitation(invitationId) {
+        const [result] = await db.query(`
+            SELECT 
+                ei.*,
+                e.title as event_title,
+                e.description as event_description,
+                e.start_date,
+                e.end_date,
+                e.location,
+                u1.username as invited_username,
+                u1.fname as invited_fname,
+                u1.lname as invited_lname,
+                u1.email as invited_email,
+                u2.username as inviter_username,
+                u2.fname as inviter_fname,
+                u2.lname as inviter_lname
+            FROM event_invitations ei
+            JOIN events e ON ei.event_id = e.id
+            JOIN users u1 ON ei.invited_user_id = u1.id
+            JOIN users u2 ON ei.invited_by = u2.id
+            WHERE ei.id = ?
+        `, [invitationId]);
+        return result[0];
+    }
+
+    static async getInvitationsByEvent(eventId) {
+        const [result] = await db.query(`
+            SELECT 
+                ei.*,
+                u.username as invited_username,
+                u.fname as invited_fname,
+                u.lname as invited_lname,
+                u.email as invited_email
+            FROM event_invitations ei
+            JOIN users u ON ei.invited_user_id = u.id
+            WHERE ei.event_id = ?
+            ORDER BY ei.created_at DESC
+        `, [eventId]);
+        return result;
+    }
+
+    static async getInvitationsByUser(userId) {
+        const [result] = await db.query(`
+            SELECT 
+                ei.*,
+                e.title as event_title,
+                e.description as event_description,
+                e.start_date,
+                e.end_date,
+                e.location,
+                u.username as inviter_username,
+                u.fname as inviter_fname,
+                u.lname as inviter_lname
+            FROM event_invitations ei
+            JOIN events e ON ei.event_id = e.id
+            JOIN users u ON ei.invited_by = u.id
+            WHERE ei.invited_user_id = ? AND ei.status = 'pending'
+            ORDER BY ei.created_at DESC
+        `, [userId]);
+        return result;
+    }
+
+    static async updateInvitationStatus(invitationId, status) {
+        const [result] = await db.query(
+            'UPDATE event_invitations SET status = ?, updated_at = NOW() WHERE id = ?',
+            [status, invitationId]
+        );
+        
+        if (result.affectedRows === 0) {
+            throw new Error('Invitation non trouvée');
+        }
+        return true;
+    }
+
+    static async deleteInvitation(invitationId) {
+        const [result] = await db.query(
+            'DELETE FROM event_invitations WHERE id = ?',
+            [invitationId]
+        );
+        
+        if (result.affectedRows === 0) {
+            throw new Error('Invitation non trouvée');
+        }
+        return true;
+    }
+
+    static async isUserInvited(eventId, userId) {
+        const [result] = await db.query(
+            'SELECT COUNT(*) as count FROM event_invitations WHERE event_id = ? AND invited_user_id = ? AND status = "pending"',
+            [eventId, userId]
+        );
+        return result[0].count > 0;
+    }
+
+    static async cleanupExpiredInvitations() {
+        const [result] = await db.query(
+            'UPDATE event_invitations SET status = "expired" WHERE expires_at < NOW() AND status = "pending"'
+        );
+        return result.affectedRows;
+    }
 }
 
 module.exports = Event;

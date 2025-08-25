@@ -211,6 +211,232 @@ class EventController {
             res.status(500).json({ error: error.message });
         }
     }
+
+    // Méthodes de gestion des invitations
+    static async inviteUser(req, res) {
+        try {
+            const { eventId } = req.params;
+            const { userId, message } = req.body;
+            
+            // Vérifier que l'événement existe
+            const existingEvent = await Event.findById(eventId);
+            if (!existingEvent) {
+                return res.status(404).json({ error: 'Événement non trouvé' });
+            }
+
+            // Vérifier que l'utilisateur est le propriétaire de l'événement
+            if (existingEvent.owner_id !== req.user.id) {
+                return res.status(403).json({ error: 'Accès non autorisé. Seul le propriétaire peut inviter des utilisateurs.' });
+            }
+
+            // Vérifier que l'utilisateur à inviter existe
+            const User = require('../models/User');
+            const userToInvite = await User.findById(userId);
+            if (!userToInvite) {
+                return res.status(404).json({ error: 'Utilisateur à inviter non trouvé' });
+            }
+
+            // Vérifier que l'utilisateur n'est pas déjà participant
+            const isAlreadyParticipant = await Event.isUserParticipant(eventId, userId);
+            if (isAlreadyParticipant) {
+                return res.status(400).json({ error: 'Cet utilisateur est déjà participant de cet événement' });
+            }
+
+            // Vérifier que l'utilisateur n'est pas déjà invité
+            const isAlreadyInvited = await Event.isUserInvited(eventId, userId);
+            if (isAlreadyInvited) {
+                return res.status(400).json({ error: 'Cet utilisateur est déjà invité à cet événement' });
+            }
+
+            // Créer l'invitation
+            const invitationId = await Event.createInvitation(eventId, userId, req.user.id, message);
+            
+            // Récupérer l'invitation créée
+            const invitation = await Event.getInvitation(invitationId);
+            
+            res.status(201).json({
+                message: 'Invitation envoyée avec succès',
+                invitation: {
+                    id: invitationId,
+                    event_id: eventId,
+                    invited_user: {
+                        id: userId,
+                        username: userToInvite.username,
+                        email: userToInvite.email,
+                        fname: userToInvite.fname,
+                        lname: userToInvite.lname
+                    },
+                    message: message,
+                    expires_at: invitation.expires_at
+                }
+            });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+
+    static async getEventInvitations(req, res) {
+        try {
+            const { eventId } = req.params;
+            
+            // Vérifier que l'événement existe
+            const existingEvent = await Event.findById(eventId);
+            if (!existingEvent) {
+                return res.status(404).json({ error: 'Événement non trouvé' });
+            }
+
+            // Vérifier que l'utilisateur est le propriétaire de l'événement
+            if (existingEvent.owner_id !== req.user.id) {
+                return res.status(403).json({ error: 'Accès non autorisé. Seul le propriétaire peut voir les invitations.' });
+            }
+
+            // Récupérer toutes les invitations
+            const invitations = await Event.getInvitationsByEvent(eventId);
+            
+            res.json({
+                event_id: eventId,
+                invitations: invitations
+            });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+
+    static async getUserInvitations(req, res) {
+        try {
+            // Récupérer les invitations de l'utilisateur connecté
+            const invitations = await Event.getInvitationsByUser(req.user.id);
+            
+            res.json({
+                user_id: req.user.id,
+                invitations: invitations
+            });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+
+    static async respondToInvitation(req, res) {
+        try {
+            const { invitationId } = req.params;
+            const { response } = req.body; // 'accepted' ou 'declined'
+            
+            if (!['accepted', 'declined'].includes(response)) {
+                return res.status(400).json({ error: 'Réponse invalide. Utilisez "accepted" ou "declined".' });
+            }
+
+            // Récupérer l'invitation
+            const invitation = await Event.getInvitation(invitationId);
+            if (!invitation) {
+                return res.status(404).json({ error: 'Invitation non trouvée' });
+            }
+
+            // Vérifier que l'utilisateur est bien l'invité
+            if (invitation.invited_user_id !== req.user.id) {
+                return res.status(403).json({ error: 'Accès non autorisé. Vous ne pouvez répondre qu\'à vos propres invitations.' });
+            }
+
+            // Vérifier que l'invitation est encore en attente
+            if (invitation.status !== 'pending') {
+                return res.status(400).json({ error: 'Cette invitation a déjà été traitée ou a expiré.' });
+            }
+
+            // Mettre à jour le statut de l'invitation
+            await Event.updateInvitationStatus(invitationId, response);
+
+            if (response === 'accepted') {
+                // Ajouter l'utilisateur comme participant
+                await Event.addParticipant(invitation.event_id, req.user.id, 'participant');
+                
+                res.json({
+                    message: 'Invitation acceptée. Vous êtes maintenant participant de l\'événement.',
+                    event: {
+                        id: invitation.event_id,
+                        title: invitation.event_title,
+                        start_date: invitation.start_date,
+                        end_date: invitation.end_date,
+                        location: invitation.location
+                    }
+                });
+            } else {
+                res.json({
+                    message: 'Invitation déclinée.',
+                    invitation_id: invitationId
+                });
+            }
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+
+    static async cancelInvitation(req, res) {
+        try {
+            const { invitationId } = req.params;
+            
+            // Récupérer l'invitation
+            const invitation = await Event.getInvitation(invitationId);
+            if (!invitation) {
+                return res.status(404).json({ error: 'Invitation non trouvée' });
+            }
+
+            // Vérifier que l'utilisateur est le propriétaire de l'événement
+            const existingEvent = await Event.findById(invitation.event_id);
+            if (existingEvent.owner_id !== req.user.id) {
+                return res.status(403).json({ error: 'Accès non autorisé. Seul le propriétaire peut annuler une invitation.' });
+            }
+
+            // Vérifier que l'invitation est encore en attente
+            if (invitation.status !== 'pending') {
+                return res.status(400).json({ error: 'Cette invitation a déjà été traitée ou a expiré.' });
+            }
+
+            // Supprimer l'invitation
+            await Event.deleteInvitation(invitationId);
+            
+            res.json({
+                message: 'Invitation annulée avec succès',
+                invitation_id: invitationId
+            });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+
+    static async searchUsers(req, res) {
+        try {
+            const { q: searchTerm, eventId, excludeParticipants = true } = req.query;
+            
+            if (!searchTerm || searchTerm.length < 2) {
+                return res.status(400).json({ error: 'Le terme de recherche doit contenir au moins 2 caractères.' });
+            }
+
+            // Récupérer les utilisateurs correspondant à la recherche
+            const User = require('../models/User');
+            let users = await User.searchUsers(searchTerm);
+
+            // Filtrer les utilisateurs déjà participants si demandé
+            if (eventId && excludeParticipants === 'true') {
+                const participants = await Event.getParticipants(eventId);
+                const participantIds = participants.map(p => p.user_id);
+                users = users.filter(user => !participantIds.includes(user.id));
+            }
+
+            // Limiter le nombre de résultats
+            users = users.slice(0, 20);
+
+            res.json({
+                success: true,
+                data: {
+                    users: users,
+                    count: users.length,
+                    searchTerm: searchTerm
+                },
+                message: `${users.length} utilisateur(s) trouvé(s)`
+            });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    }
 }
 
 module.exports = EventController;

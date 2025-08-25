@@ -40,6 +40,22 @@ CREATE TABLE IF NOT EXISTS event_participants (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS event_invitations (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    event_id INT NOT NULL,
+    invited_user_id INT NOT NULL,
+    invited_by INT NOT NULL,
+    status ENUM('pending', 'accepted', 'declined', 'expired') DEFAULT 'pending',
+    message TEXT,
+    expires_at DATETIME NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+    FOREIGN KEY (invited_user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (invited_by) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_invitation (event_id, invited_user_id)
+);
+
 CREATE TABLE IF NOT EXISTS event_tasks (
     id INT PRIMARY KEY AUTO_INCREMENT,
     owner_id INT NOT NULL,
