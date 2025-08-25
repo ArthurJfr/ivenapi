@@ -439,14 +439,14 @@ GET /api/event/:eventId/participants
 }
 ```
 
-### 🆕 **Gestion des invitations d'événements**
+### **Gestion des invitations d'événements**
 
 > **🔄 Workflow d'invitation :** 
-> 1. Le propriétaire recherche des utilisateurs via `search-users`
-> 2. Il envoie une invitation avec un message personnalisé
-> 3. L'utilisateur invité reçoit l'invitation
-> 4. **L'utilisateur accepte l'invitation → Ajout automatique comme participant**
-> 5. L'utilisateur décline l'invitation → Invitation marquée comme déclinée
+> 1. **Recherche** : Le propriétaire recherche des utilisateurs via `search-users`
+> 2. **Invitation** : Il envoie une invitation avec un message personnalisé
+> 3. **Notification** : L'utilisateur invité reçoit l'invitation
+> 4. **Réponse** : L'utilisateur accepte ou décline l'invitation
+> 5. **Intégration** : Si acceptée, l'utilisateur devient automatiquement participant
 
 #### Inviter un utilisateur à un événement
 ```
@@ -628,7 +628,7 @@ Authorization: Bearer <token>
 }
 ```
 
-#### 🆕 **Rechercher des utilisateurs**
+#### **Rechercher des utilisateurs**
 ```
 GET /api/event/search/users?q=john&eventId=1&excludeParticipants=true
 Authorization: Bearer <token>
@@ -1011,7 +1011,7 @@ GET /api/task/participant/:participantId
 ]
 ```
 
-### 🆕 **Valider une tâche**
+### **Valider une tâche**
 ```
 POST /api/task/:id/validate
 Authorization: Bearer <token>
@@ -1064,7 +1064,7 @@ Authorization: Bearer <token>
 }
 ```
 
-### 🆕 **Annuler la validation d'une tâche**
+### **Annuler la validation d'une tâche**
 ```
 DELETE /api/task/:id/validate
 Authorization: Bearer <token>
@@ -1109,7 +1109,7 @@ Authorization: Bearer <token>
 }
 ```
 
-### 🆕 **Obtenir les tâches validées par un utilisateur**
+### **Obtenir les tâches validées par un utilisateur**
 ```
 GET /api/task/validated-by/:userId
 ```
@@ -1421,9 +1421,9 @@ La méthode `is-connected` permet de :
 | GET | `/api/task/event/:eventId` | Tâches par événement | Non |
 | GET | `/api/task/owner/:ownerId` | Tâches par propriétaire | Non |
 | GET | `/api/task/participant/:participantId` | Tâches par participant | Non |
-| 🆕 **POST** | **`/api/task/:id/validate`** | **Valider une tâche** | **Oui** | **User+** |
-| 🆕 **DELETE** | **`/api/task/:id/validate`** | **Annuler validation** | **Oui** | **User+** |
-| 🆕 **GET** | **`/api/task/validated-by/:userId`** | **Tâches validées par un utilisateur** | **Non** | **-** |
+| POST | `/api/task/:id/validate` | Valider une tâche | Oui | User+ |
+| DELETE | `/api/task/:id/validate` | Annuler validation | Oui | User+ |
+| GET | `/api/task/validated-by/:userId` | Tâches validées par un utilisateur | Non | - |
 | GET | `/api/log/recent` | Logs récents avec filtres | Non |
 | GET | `/api/log/stats` | Statistiques des logs | Non |
 | GET | `/api/log/errors` | Logs d'erreur | Non |
