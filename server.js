@@ -5,6 +5,7 @@ const bodyParser = require("body-parser");
 require("dotenv").config(); 
 const mongoose = require("mongoose");
 const db = require('./config/db'); // Import de la connexion MySQL
+const rateLimit = require('express-rate-limit');
 const authRoutes = require('./routes/auth.route');
 const healthRoutes = require('./routes/health.route');
 const logger = require('./config/logger');
@@ -23,7 +24,6 @@ const testMySQLConnection = async () => {
     process.exit(1); // Arrêt du serveur en cas d'échec de connexion
   }
 };
-
 // Middlewares CORS
 app.use(cors({
   origin: '*',
@@ -31,11 +31,24 @@ app.use(cors({
  // allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
-
-// Middlewares bodyParser
-app.use(bodyParser.json({ limit: '50mb' }));
-app.use(bodyParser.urlencoded({ limit: '50mb', extended: true, parameterLimit: 50000 }));
-
+// Rate limiting (global + auth plus strict)
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/', apiLimiter);
+app.use('/api/auth/', authLimiter);
+// Middlewares bodyParser (réduction des limites)
+app.use(bodyParser.json({ limit: '2mb' }));
+app.use(bodyParser.urlencoded({ limit: '2mb', extended: true, parameterLimit: 1000 }));
 // Connexion MongoDB
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
@@ -44,18 +57,14 @@ mongoose.connect(process.env.MONGO_URI, {
 mongoose.connection.on("connected", () => {
   console.log("✅Connected to MongoDB");
 });
-
 // Routes
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/event', eventRoutes);
 app.use('/api/task', taskRoutes);
 app.use('/api/logs', logRoutes);
-
-
 // Ajoutez le middleware de logging
 app.use(loggerMiddleware);
-
 // Modifiez la gestion des erreurs globales
 app.use((err, req, res, next) => {
   logger.error('Erreur serveur non gérée', {
@@ -65,7 +74,6 @@ app.use((err, req, res, next) => {
   });
   res.status(500).json({ message: 'Erreur serveur interne' });
 });
-
 // Initialisation des dossiers
 initializeUploadDirectories()
   .then(() => {
@@ -82,7 +90,6 @@ initializeUploadDirectories()
     console.error('Erreur fatale lors de l\'initialisation:', error);
     process.exit(1);
   });
-
 // Test de la connexion MySQL avant de démarrer le serveur
 testMySQLConnection().then(() => {
   const port = process.env.PORT || 3000;
