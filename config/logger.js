@@ -1,6 +1,9 @@
 const winston = require('winston');
 const MongoTransport = require('../utils/mongoTransport');
 
+// Détecter si on est en mode test
+const isTest = process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID;
+
 // Configuration des formats
 const logFormat = winston.format.combine(
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
@@ -9,45 +12,49 @@ const logFormat = winston.format.combine(
   winston.format.json()
 );
 
-// Transport MongoDB personnalisé
-const mongoTransport = new MongoTransport({
-  level: 'info',
-  collection: 'logs'
-});
+// Transports MongoDB seulement si pas en mode test
+const transports = [
+  // Console avec couleurs
+  new winston.transports.Console({
+    level: process.env.NODE_ENV === 'production' ? 'warn' : 'debug',
+    format: winston.format.combine(
+      winston.format.colorize(),
+      winston.format.simple()
+    )
+  })
+];
 
-// Transport pour les erreurs critiques (niveau error uniquement)
-const errorMongoTransport = new MongoTransport({
-  level: 'error',
-  collection: 'error_logs'
-});
+// Ajouter les transports MongoDB seulement si pas en mode test
+if (!isTest) {
+  // Transport MongoDB personnalisé
+  const mongoTransport = new MongoTransport({
+    level: 'info',
+    collection: 'logs'
+  });
+
+  // Transport pour les erreurs critiques (niveau error uniquement)
+  const errorMongoTransport = new MongoTransport({
+    level: 'error',
+    collection: 'error_logs'
+  });
+
+  transports.push(mongoTransport, errorMongoTransport);
+}
+
+// Fichier pour les erreurs en production (seulement si pas en test)
+if (process.env.NODE_ENV === 'production' && !isTest) {
+  transports.push(
+    new winston.transports.File({ 
+      filename: 'logs/error.log', 
+      level: 'error' 
+    })
+  );
+}
 
 // Ajouter des transports pour différents niveaux
 const logger = winston.createLogger({
   format: logFormat,
-  transports: [
-    // Logs d'info et plus dans MongoDB
-    mongoTransport,
-    
-    // Erreurs critiques dans une collection séparée
-    errorMongoTransport,
-    
-    // Console avec couleurs
-    new winston.transports.Console({
-      level: process.env.NODE_ENV === 'production' ? 'warn' : 'debug',
-      format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.simple()
-      )
-    }),
-    
-    // Fichier pour les erreurs en production
-    ...(process.env.NODE_ENV === 'production' ? [
-      new winston.transports.File({ 
-        filename: 'logs/error.log', 
-        level: 'error' 
-      })
-    ] : [])
-  ]
+  transports
 });
 
 // Fonction utilitaire pour logger avec contexte de requête

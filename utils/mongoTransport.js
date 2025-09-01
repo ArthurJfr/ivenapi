@@ -13,6 +13,13 @@ class MongoTransport extends winston.Transport {
   }
 
   async log(info, callback) {
+    // En mode test, ne pas essayer de sauvegarder en MongoDB
+    const isTest = process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID;
+    if (isTest) {
+      if (callback) callback(null, true);
+      return;
+    }
+
     try {
       // Extraire les informations de la requête si disponibles
       const logData = {
