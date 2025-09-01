@@ -13,19 +13,42 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# Vérifier si on doit ignorer les tests
+SKIP_TESTS=false
+if [[ "${1:-}" == "--skip-tests" ]]; then
+    SKIP_TESTS=true
+    echo "⚠️  Tests ignorés (--skip-tests)"
+fi
 
+# Installation des dépendances et tests
+if [[ "$SKIP_TESTS" == "false" ]]; then
+    echo "[1/5] Installation des dépendances..."
+    npm install
+    
+    echo "[2/5] Exécution des tests..."
+    if npm test; then
+        echo "✅ Tests passés avec succès"
+    else
+        echo "❌ Tests échoués. Déploiement annulé."
+        echo "💡 Pour ignorer les tests, utilisez: ./deploy.sh --skip-tests"
+        exit 1
+    fi
+else
+    echo "[1/5] Tests ignorés - Installation des dépendances..."
+    npm install
+fi
 
-echo "[1/4] Construction des images..."
+echo "[2/5] Construction des images..."
 docker compose build --no-cache
 
-echo "[2/4] Démarrage des services en arrière-plan..."
+echo "[3/5] Démarrage des services en arrière-plan..."
 docker compose up -d
 
-echo "[3/4] Vérification des logs de l'API (100 dernières lignes)"
+echo "[4/5] Vérification des logs de l'API (100 dernières lignes)"
 docker logs --tail 100 iven-api || true
 
-echo "[4/4] Statut des conteneurs:"
+echo "[5/5] Statut des conteneurs:"
 docker compose ps
 
-echo "Déploiement terminé. API accessible sur http://IP_DU_VPS:3000"
+echo "✅ Déploiement terminé. API accessible sur http://IP_DU_VPS:3000"
 
