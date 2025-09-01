@@ -20,13 +20,10 @@ if [[ "${1:-}" == "--skip-tests" ]]; then
     echo "⚠️  Tests ignorés (--skip-tests)"
 fi
 
-# Installation des dépendances et tests
+# Tests dans un conteneur Docker (pas besoin de Node.js sur le VPS)
 if [[ "$SKIP_TESTS" == "false" ]]; then
-    echo "[1/5] Installation des dépendances..."
-    npm install
-    
-    echo "[2/5] Exécution des tests..."
-    if npm test; then
+    echo "[1/5] Exécution des tests dans un conteneur Docker..."
+    if docker run --rm -v "$(pwd)":/app -w /app -e NODE_ENV=test node:20-alpine sh -c "npm install && npm test"; then
         echo "✅ Tests passés avec succès"
     else
         echo "❌ Tests échoués. Déploiement annulé."
@@ -34,8 +31,7 @@ if [[ "$SKIP_TESTS" == "false" ]]; then
         exit 1
     fi
 else
-    echo "[1/5] Tests ignorés - Installation des dépendances..."
-    npm install
+    echo "[1/5] Tests ignorés"
 fi
 
 echo "[2/5] Construction des images..."
