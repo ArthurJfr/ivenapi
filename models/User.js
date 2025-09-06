@@ -14,10 +14,11 @@ class User {
     }
   }
   //#endregion
-  static async updateUser(userData) {
-    const { id, username, fname, lname } = userData; 
+  static async updateUser(id, userData) {
+    const { username, fname, lname } = userData; 
     try {
       const [rows] = await db.query('UPDATE users SET username = ?, fname = ?, lname = ? WHERE id = ?', [username, fname, lname, id]);
+      console.log(rows);
       return rows[0];
     } catch (error) {
       throw new Error('Erreur lors de la mise à jour de l\'utilisateur');

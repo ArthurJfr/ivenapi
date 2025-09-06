@@ -345,7 +345,7 @@ const authController = {
   
   async updateUser(req, res) {
     try {
-      const user = await User.updateUser(req.body);
+      const user = await User.updateUser(req.params.id, req.body);
       res.json(user);
     } catch (error) {
       logger.error('Erreur mise à jour utilisateur:', error);
