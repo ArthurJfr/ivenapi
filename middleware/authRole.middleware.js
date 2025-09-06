@@ -2,7 +2,16 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const logger = require('../config/logger');
 
-// Middleware combiné : authentification + vérification de rôle
+/**
+ * Fabrique un middleware combinant authentification JWT et vérification de rôle.
+ *
+ * 1) Vérifie le token JWT et charge l'utilisateur
+ * 2) Vérifie que le rôle de l'utilisateur respecte la hiérarchie minimale requise
+ * 3) Attache `req.user` et `req.userRole` puis appelle `next()`
+ *
+ * @param {('user'|'admin'|'superadmin')} requiredRole Rôle minimum requis
+ * @returns {(req: import('express').Request, res: import('express').Response, next: import('express').NextFunction) => Promise<void>}
+ */
 const requireAuthAndRole = (requiredRole) => {
   return async (req, res, next) => {
     try {

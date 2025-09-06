@@ -1,5 +1,13 @@
 const logger = require('../config/logger');
 
+/**
+ * Middleware de journalisation des requêtes HTTP.
+ * Log l'entrée de la requête et, à la fin, la réponse avec durée et statut.
+ *
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ */
 const loggerMiddleware = (req, res, next) => {
   const start = Date.now();
   

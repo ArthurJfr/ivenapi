@@ -341,6 +341,16 @@ const authController = {
       logger.error('Erreur récupération utilisateur:', error);
       res.status(500).json({ message: 'Erreur lors de la récupération de l\'utilisateur' });
     }
+  },
+  
+  async updateUser(req, res) {
+    try {
+      const user = await User.updateUser(req.body);
+      res.json(user);
+    } catch (error) {
+      logger.error('Erreur mise à jour utilisateur:', error);
+      res.status(500).json({ message: 'Erreur lors de la mise à jour de l\'utilisateur' });
+    }
   }
 };
 

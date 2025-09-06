@@ -3,10 +3,22 @@ const router = express.Router();
 const HealthController = require('../controllers/health.controller');
 const authMiddleware = require('../middleware/auth.middleware');
 
-// Route publique pour le health check basique
+/**
+ * GET /health
+ * Vérification basique de l'état du service.
+ *
+ * Auth: Public
+ * Retour: 200 Détails de l'état
+ */
 router.get('/', HealthController.healthCheck);
 
-// Route protégée pour le health check détaillé (nécessite authentification)
+/**
+ * GET /health/protected
+ * Vérification détaillée du service (accès protégé).
+ *
+ * Auth: Requis
+ * Retour: 200 Détails avancés de l'état
+ */
 router.get('/protected', authMiddleware, HealthController.healthCheckProtected);
 
 module.exports = router;

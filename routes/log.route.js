@@ -5,22 +5,78 @@ const authMiddleware = require('../middleware/auth.middleware');
 const { requireRole } = require('../middleware/role.middleware');
 const { requireAuthAndRole } = require('../middleware/authRole.middleware');
 
-// Route pour récupérer les logs récents (pagination et filtres)
+/**
+ * GET /recent
+ * Récupère les logs récents avec pagination et filtres.
+ *
+ * Query:
+ * - page?: number (défaut 1)
+ * - limit?: number (défaut 20)
+ * - level?: string ('info' | 'warn' | 'error' | ...)
+ * - from?: string (ISO 8601)
+ * - to?: string (ISO 8601)
+ *
+ * Auth: Public
+ * Retour: 200 Liste paginée de logs
+ */
 router.get('/recent', logController.getRecentLogs);
 
-// Route pour obtenir les statistiques des logs
+/**
+ * GET /stats
+ * Retourne des statistiques agrégées sur les logs (par niveau, source, période, ...).
+ *
+ * Auth: Public
+ * Retour: 200 Objet de statistiques
+ */
 router.get('/stats', logController.getLogStats);
 
-// Route pour récupérer les logs d'erreur
+/**
+ * GET /errors
+ * Récupère uniquement les logs de niveau "erreur".
+ *
+ * Query:
+ * - page?: number (défaut 1)
+ * - limit?: number (défaut 20)
+ * - from?: string (ISO 8601)
+ * - to?: string (ISO 8601)
+ *
+ * Auth: Public
+ * Retour: 200 Liste paginée de logs d'erreur
+ */
 router.get('/errors', logController.getErrorLogs);
 
-// Route pour récupérer les logs d'un utilisateur spécifique
+/**
+ * GET /user/:userId
+ * Récupère les logs associés à un utilisateur spécifique.
+ *
+ * Params:
+ * - userId: string (identifiant utilisateur)
+ *
+ * Query:
+ * - page?: number (défaut 1)
+ * - limit?: number (défaut 20)
+ *
+ * Auth: Public
+ * Retour: 200 Liste paginée de logs pour l'utilisateur
+ */
 router.get('/user/:userId', logController.getUserLogs);
 
-// Route pour nettoyer les anciens logs (admin et superadmin)
+/**
+ * DELETE /clean
+ * Supprime les anciens logs selon la stratégie définie (date d'expiration, etc.).
+ *
+ * Auth: Requiert authentification et rôle 'admin' (les 'superadmin' sont également autorisés)
+ * Retour: 200 Détails sur le nombre de logs supprimés
+ */
 router.delete('/clean', requireAuthAndRole('admin'), logController.cleanOldLogs);
 
-// Route pour supprimer TOUS les logs (superadmin seulement)
+/**
+ * DELETE /clean-all
+ * Supprime tous les logs de la base. Opération destructive.
+ *
+ * Auth: Requiert authentification et rôle 'superadmin'
+ * Retour: 200 Résumé de la suppression
+ */
 router.delete('/clean-all', requireAuthAndRole('superadmin'), logController.cleanAllLogs);
 
 module.exports = router;

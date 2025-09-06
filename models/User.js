@@ -14,6 +14,17 @@ class User {
     }
   }
   //#endregion
+  static async updateUser(userData) {
+    const { id, username, fname, lname } = userData; 
+    try {
+      const [rows] = await db.query('UPDATE users SET username = ?, fname = ?, lname = ? WHERE id = ?', [username, fname, lname, id]);
+      return rows[0];
+    } catch (error) {
+      throw new Error('Erreur lors de la mise à jour de l\'utilisateur');
+    }
+  }  
+
+
   //#region SELECT
   static async findByEmail(email) {
     try {
@@ -46,14 +57,7 @@ class User {
       throw new Error('Erreur lors de la recherche de l\'utilisateur');
     }
   }
-  static async getProfilePicture(username) {
-    try {
-      const [rows] = await db.query('SELECT profile_picture FROM users WHERE username = ?', [username]);
-      return rows[0]?.profile_picture || null;
-    } catch (error) {
-      return null;
-    }
-  } 
+
   static async getUserByUsername(username) {
     try {
       const [rows] = await db.query('SELECT id, username, email, role, active, profile_picture FROM users WHERE username = ?', [username]);

@@ -1,6 +1,16 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+/**
+ * Middleware d'authentification JWT.
+ * Extrait le token depuis l'en-tête Authorization, vérifie la signature,
+ * charge l'utilisateur et l'attache à `req.user`.
+ *
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ * @returns {void}
+ */
 const authMiddleware = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];

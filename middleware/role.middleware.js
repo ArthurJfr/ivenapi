@@ -1,7 +1,14 @@
 const User = require('../models/User');
 const logger = require('../config/logger');
 
-// Middleware pour vérifier si l'utilisateur a le rôle requis
+/**
+ * Vérifie que l'utilisateur authentifié possède un rôle suffisant.
+ * Utilise `req.user.id` (fourni par l'auth middleware) pour récupérer le rôle
+ * et le comparer à la hiérarchie.
+ *
+ * @param {('user'|'admin'|'superadmin')} requiredRole Rôle minimum requis
+ * @returns {(req: import('express').Request, res: import('express').Response, next: import('express').NextFunction) => Promise<void>}
+ */
 const requireRole = (requiredRole) => {
   return async (req, res, next) => {
     try {
