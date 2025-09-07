@@ -43,7 +43,7 @@ router.get('/stats', logController.getLogStats);
  * Auth: Public
  * Retour: 200 Liste paginée de logs d'erreur
  */
-router.get('/errors', logController.getErrorLogs);
+router.get('/errors', requireAuthAndRole('admin'), logController.getErrorLogs);
 
 /**
  * GET /user/:userId
@@ -59,7 +59,7 @@ router.get('/errors', logController.getErrorLogs);
  * Auth: Public
  * Retour: 200 Liste paginée de logs pour l'utilisateur
  */
-router.get('/user/:userId', logController.getUserLogs);
+router.get('/user/:userId', requireAuthAndRole('admin'), logController.getUserLogs);
 
 /**
  * DELETE /clean
@@ -68,7 +68,7 @@ router.get('/user/:userId', logController.getUserLogs);
  * Auth: Requiert authentification et rôle 'admin' (les 'superadmin' sont également autorisés)
  * Retour: 200 Détails sur le nombre de logs supprimés
  */
-router.delete('/clean', requireAuthAndRole('admin'), logController.cleanOldLogs);
+router.delete('/clean', requireAuthAndRole('superadmin'), logController.cleanOldLogs);
 
 /**
  * DELETE /clean-all
@@ -77,6 +77,7 @@ router.delete('/clean', requireAuthAndRole('admin'), logController.cleanOldLogs)
  * Auth: Requiert authentification et rôle 'superadmin'
  * Retour: 200 Résumé de la suppression
  */
+router.delete('/clean-all', requireAuthAndRole('superadmin'), logController.cleanAllLogs);
 router.delete('/clean-all', requireAuthAndRole('superadmin'), logController.cleanAllLogs);
 
 module.exports = router;
