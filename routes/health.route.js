@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const HealthController = require('../controllers/health.controller');
-const authMiddleware = require('../middleware/auth.middleware');
+const { requireAuthAndRole } = require('../middleware/authRole.middleware');
 
 /**
  * GET /health
@@ -19,6 +19,6 @@ router.get('/', HealthController.healthCheck);
  * Auth: Requis
  * Retour: 200 Détails avancés de l'état
  */
-router.get('/protected', authMiddleware, HealthController.healthCheckProtected);
+router.get('/protected', requireAuthAndRole('admin'), HealthController.healthCheckProtected);
 
 module.exports = router;

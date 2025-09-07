@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const logController = require('../controllers/log.controller');
 const authMiddleware = require('../middleware/auth.middleware');
-const { requireRole } = require('../middleware/role.middleware');
 const { requireAuthAndRole } = require('../middleware/authRole.middleware');
 
 /**
@@ -19,7 +18,7 @@ const { requireAuthAndRole } = require('../middleware/authRole.middleware');
  * Auth: Public
  * Retour: 200 Liste paginée de logs
  */
-router.get('/recent', logController.getRecentLogs);
+router.get('/recent', requireAuthAndRole('admin'), logController.getRecentLogs);
 
 /**
  * GET /stats
@@ -28,7 +27,7 @@ router.get('/recent', logController.getRecentLogs);
  * Auth: Public
  * Retour: 200 Objet de statistiques
  */
-router.get('/stats', logController.getLogStats);
+router.get('/stats', requireAuthAndRole('admin'), logController.getLogStats);
 
 /**
  * GET /errors

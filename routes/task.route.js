@@ -21,7 +21,7 @@ router.post('/create', authMiddleware, TaskController.createTask);
  * Auth: Public
  * Retour: 200 Tâche
  */
-router.get('/:id', TaskController.getTask);
+router.get('/:id', authMiddleware, TaskController.getTask);
 /**
  * GET /tasks/event/:eventId
  * Liste les tâches d'un événement.
@@ -30,7 +30,7 @@ router.get('/:id', TaskController.getTask);
  * Auth: Public
  * Retour: 200 Liste de tâches
  */
-router.get('/event/:eventId', TaskController.getTasksByEventId);
+router.get('/event/:eventId', authMiddleware, TaskController.getTasksByEventId);
 /**
  * GET /tasks/owner/:ownerId
  * Liste les tâches créées par un propriétaire donné.
@@ -39,7 +39,7 @@ router.get('/event/:eventId', TaskController.getTasksByEventId);
  * Auth: Public
  * Retour: 200 Liste de tâches
  */
-router.get('/owner/:ownerId', TaskController.getTasksByOwnerId);
+router.get('/owner/:ownerId', authMiddleware, TaskController.getTasksByOwnerId);
 /**
  * GET /tasks/participant/:participantId
  * Liste les tâches auxquelles un utilisateur participe.
@@ -48,7 +48,7 @@ router.get('/owner/:ownerId', TaskController.getTasksByOwnerId);
  * Auth: Public
  * Retour: 200 Liste de tâches
  */
-router.get('/participant/:participantId', TaskController.getTasksByParticipantId);
+router.get('/participant/:participantId', authMiddleware, TaskController.getTasksByParticipantId);
 router.put('/:id', authMiddleware, TaskController.updateTask);
 
 /**
@@ -77,6 +77,6 @@ router.delete('/:id/validate', authMiddleware, TaskController.unvalidateTask);
  * Auth: Public
  * Retour: 200 Liste de tâches
  */
-router.get('/validated-by/:userId', TaskController.getTasksValidatedByUser);
+router.get('/validated-by/:userId', authMiddleware, TaskController.getTasksValidatedByUser);
 
 module.exports = router;
