@@ -332,48 +332,6 @@ Authorization: Bearer <token>
 > 
 > **🔧 Note technique :** La méthode `addParticipant` est toujours utilisée en interne par le système d'invitation, mais n'est plus accessible directement via l'API.
 
-#### ~~Ajouter un participant~~ (Déprécié - Utilisez le système d'invitation)
-
-~~**Cette méthode est dépréciée. L'ajout de participants se fait maintenant automatiquement via le système d'invitation.**~~
-
-~~```~~
-~~POST /api/event/:eventId/participants~~
-~~Authorization: Bearer <token>~~
-~~Content-Type: application/json~~
-
-~~{~~
-~~  "userId": 456,~~
-~~  "role": "participant"~~
-~~}~~
-~~```~~
-
-~~**Réponse :**~~
-~~```json~~
-~~{~~
-~~  "message": "Participant ajouté avec succès",~~
-~~  "participant": {~~
-~~    "event_id": 1,~~
-~~    "user_id": 456,~~
-~~    "role": "participant",~~
-~~    "username": "nouveau_user",~~
-~~    "email": "nouveau@example.com"~~
-~~  }~~
-~~}~~
-~~```~~
-
-~~**Erreurs possibles :**~~
-~~```json~~
-~~{~~
-~~  "error": "Accès non autorisé. Seul le propriétaire peut ajouter des participants."~~
-~~}~~
-~~```~~
-
-~~```json~~
-~~{~~
-~~  "error": "Cet utilisateur est déjà participant de cet événement"~~
-~~}~~
-~~```~~
-
 #### Retirer un participant
 ```
 DELETE /api/event/:eventId/participants/:userId
@@ -1404,7 +1362,6 @@ La méthode `is-connected` permet de :
 | GET | `/api/event/:id` | Obtenir événement | Non |
 | GET | `/api/event/owner/:ownerId` | Événements par propriétaire | Non |
 | GET | `/api/event/participant/:participantId` | Événements par participant | Non |
-| ~~POST~~ | ~~`/api/event/:eventId/participants`~~ | ~~Ajouter participant~~ | ~~Oui~~ |
 | DELETE | `/api/event/:eventId/participants/:userId` | Retirer participant | Oui |
 | GET | `/api/event/:eventId/participants` | Lister participants | Non |
 | POST | `/api/event/:eventId/invite` | Inviter utilisateur | Oui |
@@ -1433,111 +1390,4 @@ La méthode `is-connected` permet de :
 
 ---
 
-## 🎯 **Système de validation des tâches**
-
-### **Principe de fonctionnement**
-Le système de validation permet aux participants d'un événement de confirmer que les tâches créées par d'autres participants ont été accomplies.
-
-### **Workflow de validation**
-1. **Création** : Un participant crée une tâche pour un événement
-2. **Exécution** : La tâche est accomplie par le créateur ou un autre participant
-3. **Validation** : Un autre participant valide la tâche accomplie
-4. **Suivi** : La tâche apparaît comme "validée" dans le système
-
-### **Règles métier**
-- ✅ **Validation possible** : Par tout participant connecté (sauf le créateur)
-- ❌ **Auto-validation** : Impossible de valider sa propre tâche
-- 🔄 **Validation unique** : Une tâche ne peut être validée qu'une seule fois
-- 🗑️ **Annulation** : Seul le validateur peut annuler sa validation
-- 📊 **Traçabilité** : Historique complet des validations conservé
-
-### **Cas d'usage typiques**
-- **Événements collaboratifs** : Validation mutuelle des tâches
-- **Gestion de projet** : Suivi des accomplissements
-- **Équipes** : Contrôle qualité des réalisations
-- **Événements familiaux** : Confirmation des tâches accomplies
-
----
-
-## 🔒 **Sécurité et permissions**
-
-### **Authentification requise**
-- **Création** : Token JWT requis
-- **Modification** : Token JWT + propriétaire uniquement
-- **Validation** : Token JWT + participant de l'événement
-- **Annulation** : Token JWT + validateur uniquement
-
-### **Vérifications de sécurité**
-- Vérification de l'existence de la tâche
-- Vérification des droits de propriété
-- Vérification du statut de validation
-- Protection contre les validations multiples
-
----
-
-*Dernière mise à jour : Janvier 2025 - Ajout du système de validation des tâches*
-
-## 📋 **Résumé des nouvelles fonctionnalités ajoutées**
-
-✅ **Validation des tâches** : `POST /api/task/:id/validate`
-✅ **Annulation de validation** : `DELETE /api/task/:id/validate`
-✅ **Consultation des validations** : `GET /api/task/validated-by/:userId`
-✅ **Documentation complète** : Exemples de requêtes et réponses
-✅ **Gestion des erreurs** : Tous les cas d'erreur documentés
-✅ **Règles métier** : Explication du système de validation
-✅ **Tableau des routes** : Mise à jour avec les nouvelles routes
-✅ **Sécurité** : Explication des permissions et vérifications
-
-Votre README est maintenant complet avec toutes les nouvelles fonctionnalités de validation des tâches ! 🚀
-
-## 🎯 **Système d'invitation des événements**
-
-### **Principe de fonctionnement**
-Le système d'invitation permet aux propriétaires d'événements d'inviter des utilisateurs à participer à leurs événements, avec un workflow complet de gestion des invitations.
-
-### **Workflow d'invitation**
-1. **Recherche** : Le propriétaire recherche des utilisateurs via `search-users`
-2. **Invitation** : Envoi d'une invitation avec message personnalisé
-3. **Notification** : L'utilisateur invité reçoit l'invitation
-4. **Réponse** : L'utilisateur accepte ou décline l'invitation
-5. **Intégration** : Si acceptée, l'utilisateur devient automatiquement participant
-
-### **Fonctionnalités clés**
-- ✅ **Recherche d'utilisateurs** : Recherche par nom, prénom, username ou email
-- ✅ **Invitations personnalisées** : Messages personnalisés pour chaque invitation
-- ✅ **Expiration automatique** : Invitations expirées après 7 jours par défaut
-- ✅ **Gestion des statuts** : pending, accepted, declined, expired
-- ✅ **Sécurité** : Seuls les propriétaires peuvent inviter et annuler
-- ✅ **Intégration automatique** : Acceptation = ajout automatique comme participant
-
-### **Cas d'usage typiques**
-- **Événements privés** : Invitation sélective des participants
-- **Gestion d'équipe** : Invitation de nouveaux membres
-- **Événements familiaux** : Invitation de proches
-- **Collaborations** : Invitation de partenaires externes
-
-### **Avantages du système**
-- **Flexibilité** : Invitation personnalisée avec messages
-- **Sécurité** : Contrôle total par le propriétaire de l'événement
-- **Expérience utilisateur** : Workflow clair et intuitif
-- **Traçabilité** : Historique complet des invitations
-- **Performance** : Index optimisés pour les requêtes fréquentes
-- **API simplifiée** : Plus besoin de gérer l'ajout manuel de participants
-- **Workflow automatisé** : Ajout automatique lors de l'acceptation d'invitation
-
----
-
-## 📊 **Résumé des nouvelles fonctionnalités d'invitation**
-
-✅ **Table `event_invitations`** : Structure complète avec contraintes et index
-✅ **Invitation d'utilisateurs** : `POST /api/event/:eventId/invite`
-✅ **Gestion des invitations** : Voir, accepter, décliner, annuler
-✅ **Recherche d'utilisateurs** : `GET /api/event/search/users`
-✅ **Workflow complet** : De l'invitation à la participation automatique
-✅ **Sécurité renforcée** : Permissions et vérifications appropriées
-✅ **Documentation complète** : Exemples et cas d'erreur
-✅ **Performance optimisée** : Index et requêtes optimisées
-✅ **API simplifiée** : Suppression de la route d'ajout direct de participants
-
-Votre API Iven dispose maintenant d'un système d'invitation complet et professionnel ! 🎉
 
