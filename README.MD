@@ -332,48 +332,6 @@ Authorization: Bearer <token>
 > 
 > **🔧 Note technique :** La méthode `addParticipant` est toujours utilisée en interne par le système d'invitation, mais n'est plus accessible directement via l'API.
 
-#### ~~Ajouter un participant~~ (Déprécié - Utilisez le système d'invitation)
-
-~~**Cette méthode est dépréciée. L'ajout de participants se fait maintenant automatiquement via le système d'invitation.**~~
-
-~~```~~
-~~POST /api/event/:eventId/participants~~
-~~Authorization: Bearer <token>~~
-~~Content-Type: application/json~~
-
-~~{~~
-~~  "userId": 456,~~
-~~  "role": "participant"~~
-~~}~~
-~~```~~
-
-~~**Réponse :**~~
-~~```json~~
-~~{~~
-~~  "message": "Participant ajouté avec succès",~~
-~~  "participant": {~~
-~~    "event_id": 1,~~
-~~    "user_id": 456,~~
-~~    "role": "participant",~~
-~~    "username": "nouveau_user",~~
-~~    "email": "nouveau@example.com"~~
-~~  }~~
-~~}~~
-~~```~~
-
-~~**Erreurs possibles :**~~
-~~```json~~
-~~{~~
-~~  "error": "Accès non autorisé. Seul le propriétaire peut ajouter des participants."~~
-~~}~~
-~~```~~
-
-~~```json~~
-~~{~~
-~~  "error": "Cet utilisateur est déjà participant de cet événement"~~
-~~}~~
-~~```~~
-
 #### Retirer un participant
 ```
 DELETE /api/event/:eventId/participants/:userId
