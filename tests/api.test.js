@@ -7,7 +7,7 @@ describe('API protected GET routes (with JWT)', () => {
 
   beforeAll(() => {
     // Configure via variable d’environnement pour pointer l’ID superadmin réel
-    const SUPERADMIN_ID = process.env.TEST_SUPERADMIN_ID || 1;
+    const SUPERADMIN_ID = process.env.TEST_SUPERADMIN_ID || 3;
     const token = jwt.sign({ userId: SUPERADMIN_ID }, process.env.JWT_SECRET, { expiresIn: '1h' });
     authHeader = { Authorization: `Bearer ${token}` };
   });
