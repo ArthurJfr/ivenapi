@@ -5,7 +5,6 @@ const fileManager = require('../utils/fileManager');
 const { sendConfirmationEmail, sendResetPasswordEmail } = require('../utils/emailService');
 const logger = require('../config/logger');
 const emailService = require('../utils/emailService');
-const { cpSync } = require('fs');
 
 const authController = {
   async register(req, res) {
@@ -346,7 +345,8 @@ const authController = {
   async updateUser(req, res) {
     try {
       const user = await User.updateUser(req.params.id, req.body);
-      res.json(user);
+      const updatedUser = await User.findById(req.params.id);
+      res.json(updatedUser);
     } catch (error) {
       logger.error('Erreur mise à jour utilisateur:', error);
       res.status(500).json({ message: 'Erreur lors de la mise à jour de l\'utilisateur' });
